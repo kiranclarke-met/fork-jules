@@ -2256,6 +2256,7 @@ IF (sf_diag%su10 .OR. sf_diag%sv10 .OR. sf_diag%sq1p5 .OR.                     &
      recip_l_mo_sea,                                                           &
      v_s_sea,v_s_std_sea,                                                      &
      z1_uv,z1_tq_ctile,db_sea,                                                 &
+    tl_1,lw_down,sw_sea(1:ssi_pts),                                           &
      sf_diag,                                                                  &
      cdr10m,sf_diag%cdr10m_n,sf_diag%cd10m_n,chr1p5m_sea,chr10m_sea            &
      )
@@ -2280,6 +2281,7 @@ IF (sf_diag%su10 .OR. sf_diag%sv10 .OR. sf_diag%sq1p5 .OR.                     &
        recip_l_mo_ice(:,:,n),                                                  &
        v_s_ice(:,:,n),v_s_std_ice(:,n),                                        &
        z1_uv,z1_tq_ctile,db_ice(:,:,n),                                        &
+      tl_1,lw_down,sw_sicat(1:ssi_pts,n),                                     &
        sf_diag,                                                                &
        cdr10m,sf_diag%cdr10m_n,sf_diag%cd10m_n,chr1p5m_sice(:,:,n),            &
        chr10m_sice(:,:,n)                                                      &

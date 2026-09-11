@@ -2314,7 +2314,8 @@ DO n = 1,nsurft
     rhostar,bq_1,bt_1,                                                         &
     cd_surft(:,n),ch_surft(:,n),cd_std(:,n),                                   &
     v_s_surft(:,n),v_s_std(:,n),recip_l_mo_surft(:,n),                         &
-    u_s_iter_surft(:,n)                                                        &
+    u_s_iter_surft(:,n),                                                       &
+    tl_1,lw_down,sw_surft(:,n)                                                &
     )
 END DO
 
@@ -2419,7 +2420,8 @@ IF ((l_dust .OR. l_dust_diag) .AND. l_aggregate) THEN
   ! are dummy variables not needed from this call
     cd_surft_soil(:,n),ch_surft_soil(:,n),cd_std_soil(:,n),                    &
     v_s_surft_soil(:,n),v_s_std_soil(:,n),recip_l_mo_surft_soil(:,n),          &
-    u_s_iter_soil(:,n)                                                         &
+    u_s_iter_soil(:,n),                                                        &
+    tl_1,lw_down,sw_surft(:,n)                                                &
     )
 
 !$OMP PARALLEL IF(nsurft > 1) DEFAULT(NONE) PRIVATE(k, l, n)                   &
@@ -2486,7 +2488,8 @@ IF (l_aero_classic) THEN
       cd_surft_classic(:,n),ch_surft_classic(:,n),                             &
       cd_std_classic(:,n),v_s_surft_classic(:,n),                              &
       v_s_std_classic(:,n),recip_l_mo_surft_classic(:,n),                      &
-      u_s_iter_classic(:,n)                                                    &
+      u_s_iter_classic(:,n),                                                   &
+      tl_1,lw_down,sw_surft(:,n)                                              &
       )
   END DO
 END IF
@@ -2744,6 +2747,7 @@ IF (sf_diag%su10 .OR. sf_diag%sv10 .OR. sf_diag%sq1p5 .OR.                     &
      recip_l_mo_surft(:,n),                                                    &
      v_s_surft(:,n),v_s_std(:,n),                                              &
      z1_uv,z1_tq,db_surft(:,n),                                                &
+    tl_1,lw_down,sw_surft(:,n),                                               &
      sf_diag,                                                                  &
      cdr10m,sf_diag%cdr10m_n,sf_diag%cd10m_n,chr1p5m(:,n)                      &
      )

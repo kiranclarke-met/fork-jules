@@ -22,6 +22,7 @@ CONTAINS
 !--- Arguments:---------------------------------------------------------
 SUBROUTINE phi_m_h (                                                           &
  points,surft_pts,surft_index,pts_index,                                       &
+ tl_1,lw_down,sw_surft,vshr_land,z1_tq,                                        &
  recip_l_mo,z_uv,z_tq,z0m,z0h,phi_m,phi_h                                      &
 )
 
@@ -32,6 +33,9 @@ USE jules_surface_mod, ONLY: a,b,d,c_over_d
 
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
+
+USE ennuf_phi_m_model_runner_mod, ONLY: ennuf_phi_m_model_runner
+
 IMPLICIT NONE
 
 INTEGER ::                                                                     &
@@ -44,7 +48,17 @@ INTEGER ::                                                                     &
 ,pts_index(points)    ! IN Index of points.
 
 REAL(KIND=real_jlslsm) ::                                                      &
- recip_l_mo(points)                                                            &
+tl_1(points)                                                                   &
+!                       ! IN Air temperature forcing.
+,lw_down(points)                                                               &
+!                       ! IN Downward longwave forcing.
+,sw_surft(points)                                                              &
+!                       ! IN Downward shortwave forcing.
+,vshr_land(points)                                                             &
+!                       ! IN Wind speed forcing.
+,z1_tq(points)                                                                 &
+!                       ! IN Height forcing.
+,recip_l_mo(points)                                                            &
 !                       ! IN Reciprocal of the Monin-Obukhov length
 !                       !     (m^-1).
 ,z_uv(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                     &
@@ -100,6 +114,9 @@ REAL(KIND=real_jlslsm) ::                                                      &
                 ! Temporary in calculation of PHI_H.
 ,phi_h_fz0      ! Temporary in calculation of PHI_H.
 
+REAL(KIND=real_jlslsm) ::                                                      &
+ forcing_data(5, points),phi_cap(points)
+
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 REAL(KIND=jprb)               :: zhook_handle
@@ -108,43 +125,46 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='PHI_M_H'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 
+forcing_data(1,:) = tl_1
+forcing_data(2,:) = lw_down
+forcing_data(3,:) = sw_surft
+forcing_data(4,:) = vshr_land
+forcing_data(5,:) = z1_tq
+
+phi_cap = LOG(z1_tq / z0m) - 0.000001
+
 !CDIR NODEP
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC)                               &
 !$OMP  PRIVATE(k,l,j,i,phi_mn, phi_hn,zeta_uv,zeta_tq,zeta_0m,zeta_0h,         &
 !$OMP  phi_h_fz1,phi_h_fz0,x_uv_sq,x_0m_sq,x_uv,x_0m,y_tq,y_0h)                &
 !$OMP  SHARED(surft_pts,surft_index,pts_index,t_i_length,z_uv,z0m,z0h,z_tq,    &
-!$OMP  recip_l_mo,phi_m,phi_h) IF(surft_pts > 1)
+!$OMP  recip_l_mo,phi_m,phi_h,forcing_data,phi_cap) IF(surft_pts > 1)
 DO k = 1,surft_pts
   l = surft_index(k)
   j=(pts_index(l) - 1) / t_i_length + 1
   i = pts_index(l) - (j-1) * t_i_length
 
+  CALL ennuf_phi_m_model_runner(forcing_data(:,l), phi_cap(l), phi_m(l))
+
   !-----------------------------------------------------------------------
-  ! 1. Calculate neutral values of PHI_M and PHI_H.
+  ! 1. Calculate neutral values of PHI_H.
   !-----------------------------------------------------------------------
 
-  phi_mn = LOG( (z_uv(i,j) + z0m(l)) / z0m(l) )
   phi_hn = LOG( (z_tq(i,j) + z0m(l)) / z0h(l) )
 
   !-----------------------------------------------------------------------
   ! 2. Calculate stability parameters.
   !-----------------------------------------------------------------------
 
-  zeta_uv = (z_uv(i,j) + z0m(l)) * recip_l_mo(l)
   zeta_tq = (z_tq(i,j) + z0m(l)) * recip_l_mo(l)
-  zeta_0m = z0m(l) * recip_l_mo(l)
   zeta_0h = z0h(l) * recip_l_mo(l)
 
   !-----------------------------------------------------------------------
-  ! 3. Calculate PHI_M and PHI_H for neutral and stable conditions.
+  ! 3. Calculate PHI_H for neutral and stable conditions.
   !    Formulation of Beljaars and Holtslag (1991).
   !-----------------------------------------------------------------------
 
   IF (recip_l_mo(l)  >=  0.0) THEN
-    phi_m(l) = phi_mn                                                          &
-               + a * (zeta_uv - zeta_0m)                                       &
-               + b * ( (zeta_uv - c_over_d) * EXP(-d * zeta_uv)                &
-                      -(zeta_0m - c_over_d) * EXP(-d * zeta_0m) )
     phi_h_fz1 = SQRT(1.0 + (2.0 / 3.0) * a * zeta_tq)
     phi_h_fz0 = SQRT(1.0 + (2.0 / 3.0) * a * zeta_0h)
     phi_h(l) = phi_hn +                                                        &
@@ -154,18 +174,10 @@ DO k = 1,surft_pts
                       -(zeta_0h - c_over_d) * EXP(-d * zeta_0h) )
 
     !-----------------------------------------------------------------------
-    ! 4. Calculate PHI_M and PHI_H for unstable conditions.
+    ! 4. Calculate PHI_H for unstable conditions.
     !-----------------------------------------------------------------------
 
   ELSE
-
-    x_uv_sq = SQRT(1.0-16.0 * zeta_uv)
-    x_0m_sq = SQRT(1.0-16.0 * zeta_0m)
-    x_uv = SQRT(x_uv_sq)
-    x_0m = SQRT(x_0m_sq)
-    phi_m(l) = phi_mn - 2.0 * LOG( (1.0 + x_uv) / (1.0 + x_0m) )               &
-                    - LOG( (1.0 + x_uv_sq) / (1.0 + x_0m_sq) )                 &
-                    + 2.0 * ( ATAN(x_uv) - ATAN(x_0m) )
 
     y_tq = SQRT(1.0-16.0 * zeta_tq)
     y_0h = SQRT(1.0-16.0 * zeta_0h)

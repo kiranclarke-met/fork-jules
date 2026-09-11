@@ -29,7 +29,7 @@ SUBROUTINE sfl_int (                                                           &
 ,vshr,cd_std,cd,ch,surft_frac                                                  &
 ,z0m,z0m_std,z0h                                                               &
 ,recip_l_mo,v_s,v_s_std                                                        &
-,z1_uv,z1_tq,db                                                                &
+,z1_uv,z1_tq,db,tl_1,lw_down,sw_surft                                          &
 ,sf_diag                                                                       &
 ,cdr10m,cdr10m_n,cd10m_n,chr1p5m,chr10m                                        &
 )
@@ -101,6 +101,12 @@ REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
 ,v_s_std(points)                                                               &
 !                         ! IN Surface layer scaling velocity excluding
 !                         !    orographic form drag (m/s).
+,tl_1(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                    &
+!                         ! IN Ice/liquid water temperature.
+,lw_down(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                 &
+!                         ! IN Surface downward LW radiation.
+,sw_surft(points)                                                              &
+!                         ! IN Surface shortwave forcing.
 ,z1_tq(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                    &
 !                         ! IN Height of lowest TQ level (m).
 ,z1_uv(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                    &
@@ -145,9 +151,18 @@ REAL(KIND=real_jlslsm) ::                                                      &
                       ! Monin-Obukhov stability function for
 !                           ! momentum integrated to the wind observatio
 !                           ! height.
-,phi_h_obs(points)    ! Monin-Obukhov stability function for
+,phi_h_obs(points)                                                             &
+                      ! Monin-Obukhov stability function for
 !                           ! scalars integrated to their observation
 !                           ! height.
+,tl_1_forcing(points)                                                         &
+                       ! Tile-wise TL_1 forcing.
+,lw_down_forcing(points)                                                      &
+                       ! Tile-wise LW_DOWN forcing.
+,vshr_forcing(points)                                                         &
+                       ! Tile-wise wind forcing.
+,z1_tq_forcing(points)
+                       ! Tile-wise height forcing.
 
 !  (b) Scalars.
 
@@ -170,6 +185,15 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='SFL_INT'
 
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+
+DO l = 1,points
+  j=(pts_index(l) - 1) / t_i_length + 1
+  i = pts_index(l) - (j-1) * t_i_length
+  tl_1_forcing(l) = tl_1(i,j)
+  lw_down_forcing(l) = lw_down(i,j)
+  vshr_forcing(l) = vshr(i,j)
+  z1_tq_forcing(l) = z1_tq(i,j)
+END DO
 
 !-----------------------------------------------------------------------
 ! 0.1 If diagnostics required and array is present,
@@ -217,6 +241,8 @@ IF (PRESENT(chr10m) .AND. (sf_diag%l_t10m .OR. sf_diag%l_q10m) ) THEN
 !$OMP END PARALLEL
 
   CALL phi_m_h (points,surft_pts,surft_index,pts_index,                        &
+                tl_1_forcing,lw_down_forcing,sw_surft,                        &
+                vshr_forcing,z1_tq_forcing,                                   &
                 recip_l_mo,z_wind,z_temp,z0m,z0h,                              &
                 phi_m_obs,phi_h_obs)
 
@@ -280,6 +306,8 @@ IF (sf_diag%su10 .OR. sf_diag%sv10 .OR. sf_diag%st1p5 .OR.                     &
   END DO
 !$OMP END PARALLEL DO
   CALL phi_m_h (points,surft_pts,surft_index,pts_index,                        &
+                tl_1_forcing,lw_down_forcing,sw_surft,                        &
+                vshr_forcing,z1_tq_forcing,                                   &
                 recip_l_mo,z_wind,z_temp,z0m,z0h,                              &
                 phi_m_obs,phi_h_obs)
 END IF
@@ -370,6 +398,8 @@ IF ( sf_diag%su10 .OR. sf_diag%sv10 .OR. l_cdr10m_snow ) THEN
 !$OMP END PARALLEL DO
 
     CALL phi_m_h (points,surft_pts,surft_index,pts_index,                      &
+                  tl_1_forcing,lw_down_forcing,sw_surft,                      &
+                  vshr_forcing,z1_tq_forcing,                                 &
                   recip_l_mo,z_wind,z_temp,z0m_std,z0h,                        &
                   phi_m_obs,phi_h_obs)
 

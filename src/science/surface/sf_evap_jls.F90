@@ -214,6 +214,8 @@ REAL(KIND=real_jlslsm) ::                                                      &
 ,rhokh1_prime          ! Modified forward time-weighted
                        ! transfer coefficient.
 
+REAL(KIND=real_jlslsm), PARAMETER :: eps_denom = SQRT(EPSILON(0.0_real_jlslsm))
+
 INTEGER ::                                                                     &
  i,j                                                                           &
              ! Loop counter (horizontal field index).
@@ -813,13 +815,20 @@ DO n = 1,nsurft
     l = surft_index(k,n)
     j=(land_index(l) - 1) / t_i_length + 1
     i = land_index(l) - (j-1) * t_i_length
-    rhokh1_prime = 1.0 / ( 1.0 / rhokh_1(l,n)                                  &
-                       + r_gamma * dtrdz_1(i,j) )
+    rhokh1_prime = 1.0_real_jlslsm /                                           &
+             SIGN(MAX(ABS(1.0_real_jlslsm /                              &
+             SIGN(MAX(ABS(rhokh_1(l,n)), eps_denom), rhokh_1(l,n)) +    &
+             r_gamma * dtrdz_1(i,j)), eps_denom),                        &
+             1.0_real_jlslsm /                                           &
+             SIGN(MAX(ABS(rhokh_1(l,n)), eps_denom), rhokh_1(l,n)) +    &
+             r_gamma * dtrdz_1(i,j))
     diff_lat_htf = (lc + lf) * ei_surft(l,n) + lc * ecan_surft(l,n)            &
                     + lc * esoil_surft(l,n) + lc * elake_surft(l,n)            &
                     - le_surft_old(l,n)
     dtstar = - diff_lat_htf /                                                  &
-                ( cp * rhokh1_prime + ashtf_prime_surft(l,n) )
+         SIGN(MAX(ABS(cp * rhokh1_prime + ashtf_prime_surft(l,n)),         &
+              eps_denom),                                               &
+            cp * rhokh1_prime + ashtf_prime_surft(l,n))
     diff_sens_htf = cp * rhokh1_prime * dtstar
     ftl_surft(l,n) = ftl_surft(l,n) + diff_sens_htf
     tstar_surft(l,n) = tstar_surft(l,n) + dtstar

@@ -120,6 +120,8 @@ REAL(KIND=real_jlslsm) ::                                                      &
  msk_sndpth
              ! Temporary scalar
 
+REAL(KIND=real_jlslsm), PARAMETER :: eps_denom = SQRT(EPSILON(0.0_real_jlslsm))
+
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 REAL(KIND=jprb)               :: zhook_handle
@@ -171,7 +173,7 @@ DO k = 1,surft_pts
       ! For upward fluxes, calculate the fraction for canopy water,
       ! then apply that fraction on the snow-free part of the grid box.
       IF (catch(l) > 0.0) THEN
-        fracaero_t(l) = canopy(l) / ( epdt(l) + catch(l) )
+        fracaero_t(l) = canopy(l) / MAX(epdt(l) + catch(l), eps_denom)
       ELSE
         fracaero_t(l) = 0.0
       END IF
@@ -199,13 +201,15 @@ DO k = 1,surft_pts
     fracaero_t(l) = 1.0
     IF (dq(l) <  0.0 .AND. snowdep_surft(l) <= 0.0) fracaero_t(l) = 0.0
     IF (dq(l) <  0.0 .AND. snowdep_surft(l) <= 0.0 .AND. catch(l) >  0.0)      &
-      fracaero_t(l) = canopy(l) / ( epdt(l) + catch(l) )
+      fracaero_t(l) = canopy(l) / MAX(epdt(l) + catch(l), eps_denom)
     IF (snowdep_surft(l) > 0.0) THEN
       IF (frac_snow_subl_melt == 1) THEN
         IF (l_fix_snow_frac) THEN
           ! Use linear expansion of exponential if non-linear term
           ! is of order EPSILON (i.e., x^2.0/2.0 ~ EPSILON)
-          IF (snowdep_surft(l) > SQRT(2.0*EPSILON(snowdep_surft))/maskd) THEN
+            IF (snowdep_surft(l) >                                                &
+              SQRT(2.0_real_jlslsm*EPSILON(snowdep_surft)) /                   &
+              MAX(maskd, eps_denom)) THEN
             fracaero_t(l) = 1.0 - EXP(-maskd * snowdep_surft(l)) *             &
                          (1.0 - fracaero_t(l))
           ELSE
@@ -224,9 +228,10 @@ DO k = 1,surft_pts
   ! Calculate resistance factors for transpiration from vegetation tiles
   ! and bare soil evaporation from soil tiles.
   !-----------------------------------------------------------------------
-  resfs(l) = gc(l) / ( gc(l) + ch(l) * vshr(i,j) )
+  resfs(l) = gc(l) / MAX(gc(l) + ch(l) * vshr(i,j), eps_denom)
   IF (l_et_stom .OR. l_et_stom_surft) THEN
-    resfs_stom(l) = gc_stom_surft(l) / ( gc_stom_surft(l) + ch(l) * vshr(i,j) )
+    resfs_stom(l) = gc_stom_surft(l) /                                          &
+                    MAX(gc_stom_surft(l) + ch(l) * vshr(i,j), eps_denom)
   END IF
   resft(l) = flake(l) + (1.0 - flake(l)) *                                     &
                         ( fracaero_t(l) + (1.0 - fracaero_t(l)) * resfs(l) )
@@ -249,8 +254,7 @@ IF ( .NOT. l_aggregate .AND. can_model == 4) THEN
         j = (land_index(l) - 1) / t_i_length + 1
         i = land_index(l) - (j-1) * t_i_length
         fracaero_t(l) = 0.0
-        resfs(l) = gc(l) /                                                     &
-                (gc(l) + ch(l) * vshr(i,j))
+        resfs(l) = gc(l) / MAX(gc(l) + ch(l) * vshr(i,j), eps_denom)
         resft(l) = resfs(l)
       END IF
     END DO

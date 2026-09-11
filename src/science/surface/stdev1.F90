@@ -97,6 +97,8 @@ REAL(KIND=real_jlslsm) ::                                                      &
 ,ws1                   ! Turbulent velocity scale for surface
 !                            ! layer
 
+REAL(KIND=real_jlslsm), PARAMETER :: eps_denom = SQRT(EPSILON(0.0_real_jlslsm))
+
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 REAL(KIND=jprb)               :: zhook_handle
@@ -116,18 +118,20 @@ DO k = 1,surft_pts
   j=(pts_index(l) - 1) / t_i_length + 1
   i = pts_index(l) - (j-1) * t_i_length
 
-  vs = SQRT ( rhokm_1(l) / rhostar(i,j) * vshr(i,j) )
+  vs = SQRT ( MAX(rhokm_1(l) / MAX(rhostar(i,j), eps_denom) *                &
+          vshr(i,j), 0.0_real_jlslsm) )
   vsf1_cubed = 1.25 * g * (z1_tq(i,j) + z0m(l)) *                              &
              ( bt_1(i,j) * ftl_1(l) + bq_1(i,j) * fqw_1(l) ) /                 &
                  rhostar(i,j)
-  IF ( vsf1_cubed  >   0.0 ) THEN
-    ws1 = ( vsf1_cubed + vs * vs * vs )** (1.0 / 3.0)
+    IF ( vsf1_cubed  >   0.0 ) THEN
+      ws1 = MAX(vsf1_cubed + vs * vs * vs, eps_denom)**                         &
+            (1.0_real_jlslsm / 3.0_real_jlslsm)
     t1_sd(i,j) = t1_sd(i,j) + MAX ( 0.0 ,                                      &
                  fld_sea(i,j) * tile_frac(l) * 1.93 * ftl_1(l) /               &
-                                        (rhostar(i,j) * ws1) )
+                              MAX(rhostar(i,j) * ws1, eps_denom) )
     q1_sd(i,j) = q1_sd(i,j) + MAX ( 0.0 ,                                      &
                  fld_sea(i,j) * tile_frac(l) * 1.93 * fqw_1(l) /               &
-                                        (rhostar(i,j) * ws1) )
+                              MAX(rhostar(i,j) * ws1, eps_denom) )
   END IF
 END DO
 !$OMP END PARALLEL DO

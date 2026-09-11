@@ -27,7 +27,7 @@ CONTAINS
 SUBROUTINE sea_rough_int (                                                     &
  points,surft_pts,surft_index,pts_index,                                       &
  charnock,charnock_w,v_s,recip_l_mo,                                           &
- z0m,z0h                                                                       &
+ z0m,z0h,tl_1,lw_down,sw_surft,vshr_land,z1_tq                                &
 )
 
 USE planet_constants_mod, ONLY:                                                &
@@ -76,8 +76,18 @@ REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
 !                    ! Charnock's coefficient from the wave model
 ,v_s(points)                                                                   &
                      ! Surface layer scaling velocity
-,recip_l_mo(points)
+,recip_l_mo(points)                                                            &
 !                    ! Reciprocal of the Obukhov length ! (m^-1).
+,tl_1(points)                                                                  &
+!                    ! Air temperature forcing.
+,lw_down(points)                                                               &
+!                    ! Downward longwave forcing.
+,sw_surft(points)                                                              &
+!                    ! Surface shortwave forcing.
+,vshr_land(points)                                                             &
+!                    ! Wind speed forcing.
+,z1_tq(points)
+!                    ! Height forcing.
 
 
 REAL(KIND=real_jlslsm), INTENT(OUT) ::                                         &
@@ -146,6 +156,7 @@ CASE (ip_ss_surf_div_int)
   !   Constant value of Charnock's coefficient and interactive
   !   calculation of z0h from surface divergence theory.
   CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                       &
+                 tl_1,lw_down,sw_surft,vshr_land,z1_tq,                       &
                  recip_l_mo,SPREAD(z_10m,1,points),                            &
                  SPREAD(z_10m,1,points),z0m,z0h,                               &
                  phi_m_10,phi_h_10)
@@ -191,6 +202,7 @@ CASE (ip_ss_coare_mq)
   !   distinction is ignored.
   IF ( .NOT. l_10m_neut) THEN
     CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                     &
+                   tl_1,lw_down,sw_surft,vshr_land,z1_tq,                     &
                    recip_l_mo,SPREAD(z_10m,1,points),                          &
                    SPREAD(z_10m,1,points),z0m,z0h,                             &
                    phi_m_10,phi_h_10)
