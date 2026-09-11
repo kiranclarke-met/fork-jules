@@ -34,7 +34,7 @@ USE jules_surface_mod, ONLY: a,b,d,c_over_d
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
 
-USE ennuf_phi_m_model_runner_mod, ONLY: ennuf_phi_m_model_runner
+USE phi_m_h_nn_debug_mod, ONLY: phi_m_h_nn_debug
 
 IMPLICIT NONE
 
@@ -114,11 +114,6 @@ REAL(KIND=real_jlslsm) ::                                                      &
                 ! Temporary in calculation of PHI_H.
 ,phi_h_fz0      ! Temporary in calculation of PHI_H.
 
-REAL(KIND=real_jlslsm) ::                                                      &
- forcing_data(5, points)
-
-REAL(KIND=real_jlslsm) :: phi_cap_l
-
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 REAL(KIND=jprb)               :: zhook_handle
@@ -127,52 +122,48 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='PHI_M_H'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 
-forcing_data(1,:) = tl_1
-forcing_data(2,:) = lw_down
-forcing_data(3,:) = sw_surft
-forcing_data(4,:) = vshr_land
-forcing_data(5,:) = z1_tq
+CALL phi_m_h_nn_debug(points,surft_pts,surft_index,pts_index,tl_1,lw_down,    &
+                      sw_surft,vshr_land,z1_tq,z0m)
 
 !CDIR NODEP
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC)                               &
 !$OMP  PRIVATE(k,l,j,i,phi_mn, phi_hn,zeta_uv,zeta_tq,zeta_0m,zeta_0h,         &
 !$OMP  phi_h_fz1,phi_h_fz0,x_uv_sq,x_0m_sq,x_uv,x_0m,y_tq,y_0h)                &
 !$OMP  SHARED(surft_pts,surft_index,pts_index,t_i_length,z_uv,z0m,z0h,z_tq,    &
-!$OMP  recip_l_mo,phi_m,phi_h,forcing_data) IF(surft_pts > 1)
+!$OMP  recip_l_mo,phi_m,phi_h) IF(surft_pts > 1)
 DO k = 1,surft_pts
   l = surft_index(k)
   j=(pts_index(l) - 1) / t_i_length + 1
   i = pts_index(l) - (j-1) * t_i_length
 
-  phi_cap_l = 0.0_real_jlslsm
-  IF (z0m(l) > TINY(1.0_real_jlslsm) .AND. z1_tq(l) > TINY(1.0_real_jlslsm)) THEN
-    phi_cap_l = LOG(z1_tq(l) / z0m(l)) - 0.000001_real_jlslsm
-  END IF
-
-  CALL ennuf_phi_m_model_runner(forcing_data(:,l), phi_cap_l, phi_m(l))
-
   !-----------------------------------------------------------------------
-  ! 1. Calculate neutral values of PHI_H.
+  ! 1. Calculate neutral values of PHI_M and PHI_H.
   !-----------------------------------------------------------------------
 
-  phi_hn = LOG(MAX(z_tq(i,j) + z0m(l), TINY(1.0_real_jlslsm)) /                &
-              MAX(z0h(l), TINY(1.0_real_jlslsm)))
+  phi_mn = LOG( (z_uv(i,j) + z0m(l)) / z0m(l) )
+  phi_hn = LOG( (z_tq(i,j) + z0m(l)) / z0h(l) )
 
   !-----------------------------------------------------------------------
   ! 2. Calculate stability parameters.
   !-----------------------------------------------------------------------
 
+  zeta_uv = (z_uv(i,j) + z0m(l)) * recip_l_mo(l)
   zeta_tq = (z_tq(i,j) + z0m(l)) * recip_l_mo(l)
+  zeta_0m = z0m(l) * recip_l_mo(l)
   zeta_0h = z0h(l) * recip_l_mo(l)
 
   !-----------------------------------------------------------------------
-  ! 3. Calculate PHI_H for neutral and stable conditions.
+  ! 3. Calculate PHI_M and PHI_H for neutral and stable conditions.
   !    Formulation of Beljaars and Holtslag (1991).
   !-----------------------------------------------------------------------
 
   IF (recip_l_mo(l)  >=  0.0) THEN
-    phi_h_fz1 = SQRT(MAX(1.0_real_jlslsm + (2.0_real_jlslsm / 3.0_real_jlslsm) * a * zeta_tq, 0.0_real_jlslsm))
-    phi_h_fz0 = SQRT(MAX(1.0_real_jlslsm + (2.0_real_jlslsm / 3.0_real_jlslsm) * a * zeta_0h, 0.0_real_jlslsm))
+    phi_m(l) = phi_mn                                                          &
+               + a * (zeta_uv - zeta_0m)                                       &
+               + b * ( (zeta_uv - c_over_d) * EXP(-d * zeta_uv)                &
+                      -(zeta_0m - c_over_d) * EXP(-d * zeta_0m) )
+    phi_h_fz1 = SQRT(1.0 + (2.0 / 3.0) * a * zeta_tq)
+    phi_h_fz0 = SQRT(1.0 + (2.0 / 3.0) * a * zeta_0h)
     phi_h(l) = phi_hn +                                                        &
                  phi_h_fz1 * phi_h_fz1 * phi_h_fz1                             &
                - phi_h_fz0 * phi_h_fz0 * phi_h_fz0                             &
@@ -180,15 +171,21 @@ DO k = 1,surft_pts
                       -(zeta_0h - c_over_d) * EXP(-d * zeta_0h) )
 
     !-----------------------------------------------------------------------
-    ! 4. Calculate PHI_H for unstable conditions.
+    ! 4. Calculate PHI_M and PHI_H for unstable conditions.
     !-----------------------------------------------------------------------
 
   ELSE
 
-    y_tq = SQRT(MAX(1.0_real_jlslsm - 16.0_real_jlslsm * zeta_tq,               &
-            0.0_real_jlslsm))
-    y_0h = SQRT(MAX(1.0_real_jlslsm - 16.0_real_jlslsm * zeta_0h,               &
-            0.0_real_jlslsm))
+    x_uv_sq = SQRT(1.0-16.0 * zeta_uv)
+    x_0m_sq = SQRT(1.0-16.0 * zeta_0m)
+    x_uv = SQRT(x_uv_sq)
+    x_0m = SQRT(x_0m_sq)
+    phi_m(l) = phi_mn - 2.0 * LOG( (1.0 + x_uv) / (1.0 + x_0m) )               &
+                    - LOG( (1.0 + x_uv_sq) / (1.0 + x_0m_sq) )                 &
+                    + 2.0 * ( ATAN(x_uv) - ATAN(x_0m) )
+
+    y_tq = SQRT(1.0-16.0 * zeta_tq)
+    y_0h = SQRT(1.0-16.0 * zeta_0h)
     phi_h(l) = phi_hn - 2.0 * LOG( (1.0 + y_tq) / (1.0 + y_0h) )
 
   END IF
