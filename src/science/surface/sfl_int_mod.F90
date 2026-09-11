@@ -186,7 +186,13 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='SFL_INT'
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
 
-DO l = 1,points
+tl_1_forcing(:) = 0.0_real_jlslsm
+lw_down_forcing(:) = 0.0_real_jlslsm
+vshr_forcing(:) = 0.0_real_jlslsm
+z1_tq_forcing(:) = 0.0_real_jlslsm
+
+DO k = 1,surft_pts
+  l = surft_index(k)
   j=(pts_index(l) - 1) / t_i_length + 1
   i = pts_index(l) - (j-1) * t_i_length
   tl_1_forcing(l) = tl_1(i,j)

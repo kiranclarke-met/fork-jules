@@ -22,6 +22,7 @@ CONTAINS
         REAL(KIND=4) :: output4(1,1)
         REAL(KIND=4) :: phi_cap4
         REAL(KIND=4) :: output_scalar4
+        REAL(KIND=4), PARAMETER :: exp_clip = 80.0
 
         ! X_scaler, learned by sklearn
         REAL(KIND=4), PARAMETER :: means_x(5) = (/ &
@@ -44,6 +45,7 @@ CONTAINS
 
         output_scalar4 = output4(1,1)
         output_scalar4 = (output_scalar4 * scale_y) + mean_y  ! un-standardise output
+        output_scalar4 = MIN(MAX(output_scalar4, -exp_clip), exp_clip)
         output_scalar4 = SIGN(EXP(ABS(output_scalar4)) - 1.0, output_scalar4)  ! un-transform output
         output_scalar4 = MIN(output_scalar4, phi_cap4)  ! cap output
 

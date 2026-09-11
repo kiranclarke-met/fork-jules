@@ -115,7 +115,9 @@ REAL(KIND=real_jlslsm) ::                                                      &
 ,phi_h_fz0      ! Temporary in calculation of PHI_H.
 
 REAL(KIND=real_jlslsm) ::                                                      &
- forcing_data(5, points),phi_cap(points)
+ forcing_data(5, points)
+
+REAL(KIND=real_jlslsm) :: phi_cap_l
 
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
@@ -131,26 +133,30 @@ forcing_data(3,:) = sw_surft
 forcing_data(4,:) = vshr_land
 forcing_data(5,:) = z1_tq
 
-phi_cap = LOG(z1_tq / z0m) - 0.000001
-
 !CDIR NODEP
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC)                               &
 !$OMP  PRIVATE(k,l,j,i,phi_mn, phi_hn,zeta_uv,zeta_tq,zeta_0m,zeta_0h,         &
 !$OMP  phi_h_fz1,phi_h_fz0,x_uv_sq,x_0m_sq,x_uv,x_0m,y_tq,y_0h)                &
 !$OMP  SHARED(surft_pts,surft_index,pts_index,t_i_length,z_uv,z0m,z0h,z_tq,    &
-!$OMP  recip_l_mo,phi_m,phi_h,forcing_data,phi_cap) IF(surft_pts > 1)
+!$OMP  recip_l_mo,phi_m,phi_h,forcing_data) IF(surft_pts > 1)
 DO k = 1,surft_pts
   l = surft_index(k)
   j=(pts_index(l) - 1) / t_i_length + 1
   i = pts_index(l) - (j-1) * t_i_length
 
-  CALL ennuf_phi_m_model_runner(forcing_data(:,l), phi_cap(l), phi_m(l))
+  phi_cap_l = 0.0_real_jlslsm
+  IF (z0m(l) > TINY(1.0_real_jlslsm) .AND. z1_tq(l) > TINY(1.0_real_jlslsm)) THEN
+    phi_cap_l = LOG(z1_tq(l) / z0m(l)) - 0.000001_real_jlslsm
+  END IF
+
+  CALL ennuf_phi_m_model_runner(forcing_data(:,l), phi_cap_l, phi_m(l))
 
   !-----------------------------------------------------------------------
   ! 1. Calculate neutral values of PHI_H.
   !-----------------------------------------------------------------------
 
-  phi_hn = LOG( (z_tq(i,j) + z0m(l)) / z0h(l) )
+  phi_hn = LOG(MAX(z_tq(i,j) + z0m(l), TINY(1.0_real_jlslsm)) /                &
+              MAX(z0h(l), TINY(1.0_real_jlslsm)))
 
   !-----------------------------------------------------------------------
   ! 2. Calculate stability parameters.
@@ -165,8 +171,8 @@ DO k = 1,surft_pts
   !-----------------------------------------------------------------------
 
   IF (recip_l_mo(l)  >=  0.0) THEN
-    phi_h_fz1 = SQRT(1.0 + (2.0 / 3.0) * a * zeta_tq)
-    phi_h_fz0 = SQRT(1.0 + (2.0 / 3.0) * a * zeta_0h)
+    phi_h_fz1 = SQRT(MAX(1.0_real_jlslsm + (2.0_real_jlslsm / 3.0_real_jlslsm) * a * zeta_tq, 0.0_real_jlslsm))
+    phi_h_fz0 = SQRT(MAX(1.0_real_jlslsm + (2.0_real_jlslsm / 3.0_real_jlslsm) * a * zeta_0h, 0.0_real_jlslsm))
     phi_h(l) = phi_hn +                                                        &
                  phi_h_fz1 * phi_h_fz1 * phi_h_fz1                             &
                - phi_h_fz0 * phi_h_fz0 * phi_h_fz0                             &
@@ -179,8 +185,10 @@ DO k = 1,surft_pts
 
   ELSE
 
-    y_tq = SQRT(1.0-16.0 * zeta_tq)
-    y_0h = SQRT(1.0-16.0 * zeta_0h)
+    y_tq = SQRT(MAX(1.0_real_jlslsm - 16.0_real_jlslsm * zeta_tq,               &
+            0.0_real_jlslsm))
+    y_0h = SQRT(MAX(1.0_real_jlslsm - 16.0_real_jlslsm * zeta_0h,               &
+            0.0_real_jlslsm))
     phi_h(l) = phi_hn - 2.0 * LOG( (1.0 + y_tq) / (1.0 + y_0h) )
 
   END IF
