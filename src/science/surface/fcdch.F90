@@ -7,6 +7,7 @@ MODULE fcdch_mod
 
 USE phi_m_h_vol_mod, ONLY: phi_m_h_vol
 USE phi_m_h_mod, ONLY: phi_m_h
+USE phi_m_h_ml_mod, ONLY: phi_m_h_ml => phi_m_h
 USE sea_rough_int_mod, ONLY: sea_rough_int
 
 USE um_types, ONLY: real_jlslsm
@@ -38,7 +39,8 @@ SUBROUTINE fcdch (                                                             &
  t_elev,tsurf,tstar,vfrac,emis,emis_soil,                                      &
  anthrop_heat,scaling_urban,alpha1,hcons,ashtf,                                &
  rhostar,bq_1,bt_1,                                                            &
- cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std                                &
+ cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,                               &
+ tl_1,lw_down,sw_surft                                                         &
 )
 
 USE atm_fields_bounds_mod, ONLY: tdims
@@ -239,6 +241,14 @@ REAL(KIND=real_jlslsm) ::                                                      &
 !                    ! OUT Reciprocal of the Monin-Obukhov length
 !                    !     (m^-1).
 
+REAL(KIND=real_jlslsm), INTENT(IN), OPTIONAL ::                               &
+ tl_1(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                    &
+                      ! IN Air temperature at lowest model level (K).
+,lw_down(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                 &
+                      ! IN Downward longwave radiation (W/m2).
+,sw_surft(points)
+                      ! IN Surface shortwave forcing on tiles (W/m2).
+
 !    Workspace usage----------------------------------------------------
 
 !     Local work arrays.
@@ -346,6 +356,11 @@ INTEGER :: indexi(surft_pts), indexj(surft_pts)
               ! Arrays to store horizontal field indices i and j
 
 REAL(KIND=real_jlslsm) ::                                                      &
+ tl_1_forcing(points),lw_down_forcing(points),sw_surft_forcing(points),       &
+ vshr_land_forcing(points),z1_tq_forcing(points)
+              ! Tile-wise forcing vectors passed to PHI_M_H.
+
+REAL(KIND=real_jlslsm) ::                                                      &
  b_flux                                                                        &
               ! Surface buoyancy flux over air density.
 ,u_s2                                                                          &
@@ -399,6 +414,44 @@ DO k = 1,surft_pts
   indexj(k) = (pts_index(l) - 1) / t_i_length + 1
   indexi(k) = pts_index(l) - (indexj(k) - 1) * t_i_length
 END DO
+
+! Build tile-wise forcing arrays for phi_m_h.
+tl_1_forcing(:) = 0.0
+lw_down_forcing(:) = 0.0
+sw_surft_forcing(:) = 0.0
+vshr_land_forcing(:) = 0.0
+z1_tq_forcing(:) = 0.0
+
+DO k = 1,surft_pts
+  l = surft_index(k)
+  j = indexj(k)
+  i = indexi(k)
+
+  IF (PRESENT(tl_1)) THEN
+    tl_1_forcing(l) = tl_1(i,j)
+  ELSE
+    tl_1_forcing(l) = t_elev(l)
+  END IF
+
+  IF (PRESENT(lw_down)) THEN
+    lw_down_forcing(l) = lw_down(i,j)
+  END IF
+
+  IF (PRESENT(sw_surft)) THEN
+    sw_surft_forcing(l) = sw_surft(l)
+  ELSE
+    sw_surft_forcing(l) = radnet(l)
+  END IF
+
+  vshr_land_forcing(l) = vshr(i,j)
+  z1_tq_forcing(l) = z1_tq(i,j)
+END DO
+
+CALL phi_m_h_ml(points,surft_pts,surft_index,                                  &
+               tl_1_forcing,lw_down_forcing,sw_surft_forcing,z1_tq_forcing,    &
+               tstar,vshr_land_forcing,z0m,z0h,phi_m,phi_h)
+phi_m(:) = 0.0
+phi_h(:) = 0.0
 
 n_its         = 8     ! Found typically 0.2% from converged value
 tolerance     = 0.25  ! Set tolerance value for convergence of db to 25%
@@ -827,6 +880,9 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
 !$OMP END PARALLEL DO
     END IF
   END DO ! Iteration loop
+
+  PRINT *, 'fcdch final phi_m = ', phi_m
+  PRINT *, 'fcdch final phi_h = ', phi_h
 
 ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
 
@@ -1257,6 +1313,9 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
 !$OMP END PARALLEL DO
     END IF
   END DO ! Iteration loop
+
+  PRINT *, 'fcdch final phi_m = ', phi_m
+  PRINT *, 'fcdch final phi_h = ', phi_h
 
 END IF ! test on cor_mo_iter eq Improve_Initial_Guess
 
