@@ -2191,7 +2191,7 @@ END IF
 ! Calculate RESFT with neutral CH and EPDT = 0 for use in calculation
 ! of Richardson number. RESFT=1 for snow and land-ice.
 !-----------------------------------------------------------------------
-
+!!!!!!!!!!!!!!! DO NOT COMMIT COMMENT - if vegdrag is on, need to update phi_m here too, but that needs another nn call
 DO n = 1,nsurft
   IF (l_vegdrag_surft(n)) THEN
     CALL can_drag_phi_m_h(                                                     &

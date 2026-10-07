@@ -44,6 +44,7 @@ SUBROUTINE fcdch (                                                             &
 
 USE atm_fields_bounds_mod, ONLY: tdims
 USE planet_constants_mod,  ONLY: g, cp, vkman
+USE phi_m_h_nn_debug_mod, ONLY: phi_m_h_nn_debug
 USE sf_flux_mod,           ONLY: sf_flux
 USE sf_resist_mod,         ONLY: sf_resist
 USE theta_field_sizes,     ONLY: t_i_length
@@ -356,7 +357,7 @@ INTEGER :: indexi(surft_pts), indexj(surft_pts)
 
 REAL(KIND=real_jlslsm) ::                                                      &
  tl_1_forcing(points),lw_down_forcing(points),sw_surft_forcing(points),       &
- vshr_land_forcing(points),z1_tq_forcing(points)
+ vshr_land_forcing(points),z1_tq_forcing(points),phi_m_nn_temp(points)
               ! Tile-wise forcing vectors passed to PHI_M_H.
 
 REAL(KIND=real_jlslsm) ::                                                      &
@@ -369,6 +370,7 @@ REAL(KIND=real_jlslsm) ::                                                      &
               ! Non-effective version of U_S2
 ,w_s
               ! Surface turbulent convective scaling velocity.
+REAL(KIND=real_jlslsm) :: ustar, ustar_denom
 
 ! Derived constants for the convective gustiness calculation
 REAL(KIND=real_jlslsm) :: cnst_cndd_1a, cnst_cndd_2a
@@ -396,7 +398,7 @@ DO l = 1, points
   v_s_std(l)       = 0.0
   u_s_std(l)       = 0.0
   recip_l_mo(l)    = 0.0
-  phi_m(l)         = 0.0
+  phi_m_nn_temp(l) = 0.0
   phi_h(l)         = 0.0
   rhokh_can(l)     = 0.0
   dtstar(l)        = 0.0
@@ -445,6 +447,10 @@ DO k = 1,surft_pts
   vshr_land_forcing(l) = vshr(i,j)
   z1_tq_forcing(l) = z1_tq(i,j)
 END DO
+
+CALL phi_m_h_nn_debug(points,surft_pts,surft_index,pts_index,                  &
+                      tl_1_forcing,lw_down_forcing,sw_surft_forcing,           &
+                      vshr_land_forcing,z1_tq_forcing,z0m, phi_m_nn_temp)
 
 n_its         = 8     ! Found typically 0.2% from converged value
 tolerance     = 0.25  ! Set tolerance value for convergence of db to 25%
@@ -510,6 +516,10 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                        recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
                        phi_m, phi_h)
     END SELECT
+    DO k = 1,surft_pts
+      l = surft_index(k)
+      phi_m(l) = phi_m_nn_temp(l)
+    END DO
   ELSE
     SELECT CASE (i_modiscopt)
     CASE (off)
@@ -523,6 +533,10 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                      recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
                      phi_m,phi_h)
     END SELECT
+    DO k = 1,surft_pts
+      l = surft_index(k)
+      phi_m(l) = phi_m_nn_temp(l)
+    END DO
   END IF
 
   IF (l_vegdrag) THEN
@@ -838,6 +852,10 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                        recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
                        phi_m, phi_h)
       END SELECT
+      DO k = 1,surft_pts
+        l = surft_index(k)
+        phi_m(l) = phi_m_nn_temp(l)
+      END DO
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
 !$OMP  SHARED(surft_pts,surft_index,chv,cdv,cdv_std,phi_h,                     &
@@ -863,6 +881,10 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                        recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
                        phi_m,phi_h)
       END SELECT
+      DO k = 1,surft_pts
+        l = surft_index(k)
+        phi_m(l) = phi_m_nn_temp(l)
+      END DO
 
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -1273,6 +1295,10 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
                        recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
                        phi_m, phi_h)
       END SELECT
+        DO k = 1,surft_pts
+          l = surft_index(k)
+          phi_m(l) = phi_m_nn_temp(l)
+        END DO
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
 !$OMP  SHARED(surft_pts,surft_index,chv,cdv,cdv_std,phi_h,                     &
@@ -1298,6 +1324,11 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
                        recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
                        phi_m,phi_h)
       END SELECT
+
+      DO k = 1,surft_pts
+        l = surft_index(k)
+        phi_m(l) = phi_m_nn_temp(l)
+      END DO
 
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -1351,6 +1382,17 @@ END IF
 !-----------------------------------------------------------------------
 ! Set CD's and CH's to be dimensionless paremters
 !-----------------------------------------------------------------------
+DO k = 1,surft_pts
+  l = surft_index(k)
+  IF (ABS(phi_m(l)) > TINY(1.0_real_jlslsm)) THEN
+    ustar = vkman * vshr(indexi(k),indexj(k)) / phi_m(l)
+  ELSE
+    ustar = 0.0_real_jlslsm
+  END IF
+  WRITE(6,'(A,I0,A,I0,A,ES14.6,A,ES14.6)') 'phi_m_debug l=',l,               &
+       ' pts_index=',pts_index(l),' value=',phi_m(l),' ustar=',ustar
+END DO
+
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l,j,i)              &
 !$OMP  SHARED(surft_pts,surft_index,pts_index,t_i_length,cdv,                  &
 !$OMP  vshr,cdv_std,chv, indexi, indexj) IF(surft_pts>1)

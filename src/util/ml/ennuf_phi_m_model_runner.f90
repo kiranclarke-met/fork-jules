@@ -1,12 +1,11 @@
 MODULE ennuf_phi_m_model_runner_mod
 IMPLICIT NONE
 CONTAINS
-    SUBROUTINE ennuf_phi_m_model_runner(input, phi_cap, output)
+    SUBROUTINE ennuf_phi_m_model_runner(input, output)
         ! ennuf_phi_m_model_runner
         ! estimates boundary layer stability function for momentum from air temperature, incoming longwave and shortwave, wind speed, and height
         ! standardises the input, runs the model, un-standardises, and caps the output
         !! input: real[5] - (/ tair, lwdown, swdown, wind, height /)
-        !! phi_cap: real - log(z/z0)-1e-6
         !! output: real - stability function for momentum
 
         USE ennuf_phi_m_model_mod, ONLY: ennuf_phi_m_model ! NN model
@@ -14,13 +13,11 @@ CONTAINS
         IMPLICIT NONE
 
         REAL(KIND=real_jlslsm), INTENT(IN) :: input(5)
-        REAL(KIND=real_jlslsm), INTENT(IN) :: phi_cap  ! cap = log(z/z0)-1e-6 to ensure ustar > 0
         REAL(KIND=real_jlslsm), INTENT(OUT) :: output
 
         ! input4 etc. written by GH Copilot
         REAL(KIND=4) :: input4(1,5)
         REAL(KIND=4) :: output4(1,1)
-        REAL(KIND=4) :: phi_cap4
         REAL(KIND=4) :: output_scalar4
         REAL(KIND=4), PARAMETER :: exp_clip = 80.0
 
@@ -37,7 +34,6 @@ CONTAINS
         REAL(KIND=4), PARAMETER :: scale_y = 1.0931165851019948
 
         input4(1,:) = REAL(input(:), KIND=4)
-        phi_cap4 = REAL(phi_cap, KIND=4)
 
         input4(1,:) = (input4(1,:) - means_x) / scales_x  ! standardise array
 
@@ -47,7 +43,6 @@ CONTAINS
         output_scalar4 = (output_scalar4 * scale_y) + mean_y  ! un-standardise output
         output_scalar4 = MIN(MAX(output_scalar4, -exp_clip), exp_clip)
         output_scalar4 = SIGN(EXP(ABS(output_scalar4)) - 1.0, output_scalar4)  ! un-transform output
-        output_scalar4 = MIN(output_scalar4, phi_cap4)  ! cap output
 
         output = REAL(output_scalar4, KIND=real_jlslsm)
         
@@ -61,15 +56,13 @@ CONTAINS
         REAL(KIND=real_jlslsm) :: input(5) ! array for input data
         REAL(KIND=real_jlslsm) :: output ! scalar output data
 
-        REAL(KIND=real_jlslsm), PARAMETER :: phi_cap = 4.0_real_jlslsm
-
         ! read in input data from file to input array 
         OPEN(unit, FILE="data/input_sample.dat",FORM="UNFORMATTED", STATUS="OLD", ACTION="READ", ACCESS="STREAM")
             READ(unit) input
         CLOSE(unit)
 
         ! call NN model 
-        CALL ennuf_phi_m_model_runner(input, phi_cap, output)
+        CALL ennuf_phi_m_model_runner(input, output)
 
         ! write output data to file from output array 
         OPEN(unit, FILE="data/output_prediction_fortran.dat",FORM="UNFORMATTED", STATUS="REPLACE", ACTION="WRITE", ACCESS="STREAM")

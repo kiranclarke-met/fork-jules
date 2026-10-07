@@ -34,8 +34,6 @@ USE jules_surface_mod, ONLY: a,b,d,c_over_d
 USE parkind1, ONLY: jprb, jpim
 USE yomhook, ONLY: lhook, dr_hook
 
-USE phi_m_h_nn_debug_mod, ONLY: phi_m_h_nn_debug
-
 IMPLICIT NONE
 
 INTEGER ::                                                                     &
@@ -121,9 +119,6 @@ REAL(KIND=jprb)               :: zhook_handle
 CHARACTER(LEN=*), PARAMETER :: RoutineName='PHI_M_H'
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
-
-CALL phi_m_h_nn_debug(points,surft_pts,surft_index,pts_index,tl_1,lw_down,    &
-                      sw_surft,vshr_land,z1_tq,z0m)
 
 !CDIR NODEP
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC)                               &
