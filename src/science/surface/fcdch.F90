@@ -450,8 +450,9 @@ END DO
 CALL phi_m_h_ml(points,surft_pts,surft_index,                                  &
                tl_1_forcing,lw_down_forcing,sw_surft_forcing,z1_tq_forcing,    &
                tstar,vshr_land_forcing,z0m,z0h,phi_m,phi_h)
-phi_m(:) = 0.0
-phi_h(:) = 0.0
+
+WHERE (phi_m(:) == 0.0) phi_m(:) = phi_m(:) + 0.5
+WHERE (phi_h(:) == 0.0) phi_h(:) = phi_h(:) + 0.5
 
 n_its         = 8     ! Found typically 0.2% from converged value
 tolerance     = 0.25  ! Set tolerance value for convergence of db to 25%
@@ -509,24 +510,24 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                      z0m, z0h, zdt)
     SELECT CASE (i_modiscopt)
     CASE (off)
-      CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
-                            recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
-                            phi_m, phi_h)
+      ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
+      !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
+      !                       phi_m, phi_h)
     CASE (on)
-      CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
-                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-                       phi_m, phi_h)
+      ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
+      !                  recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+      !                  phi_m, phi_h)
     END SELECT
   ELSE
     SELECT CASE (i_modiscopt)
     CASE (off)
-      CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
-                     recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
-                     phi_m,phi_h)
+      ! CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
+      !                recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
+      !                phi_m,phi_h)
     CASE (on)
-      CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
-                     recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
-                     phi_m,phi_h)
+      ! CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
+      !                recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
+      !                phi_m,phi_h)
     END SELECT
   END IF
 
@@ -834,13 +835,13 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
 
       SELECT CASE (i_modiscopt)
       CASE (off)
-        CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
-                              recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
-                              phi_m, phi_h)
+        ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
+        !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
+        !                       phi_m, phi_h)
       CASE (on)
-        CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
-                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-                       phi_m, phi_h)
+        ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
+        !                recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+        !                phi_m, phi_h)
       END SELECT
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -857,13 +858,13 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
     ELSE
       SELECT CASE (i_modiscopt)
       CASE (off)
-        CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
-                       recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
-                       phi_m,phi_h)
+        ! CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
+        !                recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
+        !                phi_m,phi_h)
       CASE (on)
-        CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
-                       recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
-                       phi_m,phi_h)
+        ! CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
+        !                recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
+        !                phi_m,phi_h)
       END SELECT
 
 
@@ -935,24 +936,24 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
                      z0m, z0h, zdt)
     SELECT CASE (i_modiscopt)
     CASE (off)
-      CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
-                            recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
-                            phi_m, phi_h)
+      ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
+      !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
+      !                       phi_m, phi_h)
     CASE (on)
-      CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
-                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-                       phi_m, phi_h)
+      ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
+      !                  recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+      !                  phi_m, phi_h)
     END SELECT
   ELSE
     SELECT CASE (i_modiscopt)
     CASE (off)
-      CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
-                     recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
-                     phi_m,phi_h)
+      ! CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
+      !                recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
+      !                phi_m,phi_h)
     CASE (on)
-      CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
-                     recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
-                     phi_m,phi_h)
+      ! CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
+      !                recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
+      !                phi_m,phi_h)
     END SELECT
   END IF
 
@@ -1267,13 +1268,13 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
 
       SELECT CASE (i_modiscopt)
       CASE (off)
-        CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
-                              recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
-                              phi_m, phi_h)
+        ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
+        !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
+        !                       phi_m, phi_h)
       CASE (on)
-        CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
-                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-                       phi_m, phi_h)
+        ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
+        !                recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+        !                phi_m, phi_h)
       END SELECT
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -1290,13 +1291,13 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
     ELSE
       SELECT CASE (i_modiscopt)
       CASE (off)
-        CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
-                       recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
-                       phi_m,phi_h)
+        ! CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
+        !                recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
+        !                phi_m,phi_h)
       CASE (on)
-        CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
-                       recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
-                       phi_m,phi_h)
+        ! CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
+        !                recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
+        !                phi_m,phi_h)
       END SELECT
 
 
