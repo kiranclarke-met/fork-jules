@@ -411,6 +411,10 @@ REAL(KIND=real_jlslsm) ::                                                      &
 
 REAL(KIND=real_jlslsm) ::tmp1, tmp2
 
+REAL(KIND=real_jlslsm) ::                                                      &
+ u_s_uncapped(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)
+             ! Debug: u_s before the BL stress-gradient cap is applied
+
 INTEGER(KIND=jpim), PARAMETER :: zhook_in  = 0
 INTEGER(KIND=jpim), PARAMETER :: zhook_out = 1
 REAL(KIND=jprb)               :: zhook_handle
@@ -657,8 +661,8 @@ END DO
 !-----------------------------------------------------------------------
 
 !$OMP PARALLEL DO DEFAULT(NONE) PRIVATE(bl_stress_grad, i, j)                  &
-!$OMP SHARED(tdims, u_s, flandg, cd_land, vshr_land, cd_ssi, vshr_ssi, zh,     &
-!$OMP        fb_surf, g, bt_1, ftl_1, bq_1, fqw_1, rhostar)                    &
+!$OMP SHARED(tdims, u_s, u_s_uncapped, flandg, cd_land, vshr_land, cd_ssi,     &
+!$OMP        vshr_ssi, zh, fb_surf, g, bt_1, ftl_1, bq_1, fqw_1, rhostar)      &
 !$OMP SCHEDULE(STATIC)
 DO j = tdims%j_start,tdims%j_end
   DO i = tdims%i_start,tdims%i_end
@@ -671,6 +675,10 @@ DO j = tdims%j_start,tdims%j_end
     !   ! such that the implied stress gradient across the BL
     !   ! is less than Max_Stress_Grad.
     !   !------------------------------------------------------
+    ! Uncapped value, needed to check against an externally derived
+    ! u_* = SQRT(tau_gb / rho), since the cap below is not applied to tau_gb.
+    u_s_uncapped(i,j) = u_s(i,j)
+
     bl_stress_grad = u_s(i,j) * u_s(i,j) / zh(i,j)
     IF (bl_stress_grad > max_stress_grad) THEN
       u_s(i,j) = SQRT(zh(i,j) * max_stress_grad)
@@ -681,6 +689,22 @@ DO j = tdims%j_start,tdims%j_end
   END DO
 END DO
 !$OMP END PARALLEL DO
+
+! Debug: print the settled gridbox-mean friction velocity (u_*) plus the
+! inputs/flag needed to reconcile it against an externally derived u_* from
+! the output tau_gb diagnostic.
+PRINT *, '---- JULES_GRIDDIAG_SF_EXPLICIT_JLS'
+DO j = tdims%j_start,tdims%j_end
+  DO i = tdims%i_start,tdims%i_end
+    WRITE(*,*) '>>>>>> u_s(', i, ',', j, ') = ', u_s(i,j),                     &
+               ' uncapped = ', u_s_uncapped(i,j),                              &
+               ' capped = ', (u_s(i,j) /= u_s_uncapped(i,j)),                  &
+               ' rhostar = ', rhostar(i,j),                                    &
+               ' flandg = ', flandg(i,j),                                      &
+               ' cd_land = ', cd_land(i,j), ' vshr_land = ', vshr_land(i,j),   &
+               ' cd_ssi = ', cd_ssi(i,j), ' vshr_ssi = ', vshr_ssi(i,j)
+  END DO
+END DO
 
 !---------------------------------------------------------------------
 ! Calculate blending height for the next time step. To do this, we

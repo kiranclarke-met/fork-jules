@@ -105,6 +105,10 @@ DO k = 1,surft_pts
   phi_m(l) = phi_mn + output(1)
   phi_h(l) = phi_hn + output(2)
 
+  PRINT *, '---- PHI_M_H_ML'
+  PRINT *, '>>>> ', input
+  PRINT *, '>>>> ', output
+
 END DO
 !$OMP END PARALLEL DO
 
