@@ -451,8 +451,8 @@ CALL phi_m_h_ml(points,surft_pts,surft_index,                                  &
                tl_1_forcing,lw_down_forcing,sw_surft_forcing,z1_tq_forcing,    &
                tstar,vshr_land_forcing,z0m,z0h,phi_m,phi_h)
 
-WHERE (phi_m(:) == 0.0) phi_m(:) = phi_m(:) + 0.5
-WHERE (phi_h(:) == 0.0) phi_h(:) = phi_h(:) + 0.5
+phi_m = MAX(phi_m, 0.5)
+phi_h = MAX(phi_h, 0.5)
 
 n_its         = 8     ! Found typically 0.2% from converged value
 tolerance     = 0.25  ! Set tolerance value for convergence of db to 25%

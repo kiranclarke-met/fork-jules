@@ -93,23 +93,17 @@ DO k = 1,surft_pts
   phi_mn = LOG( (z_tq(l) + z0m(l)) / z0m(l) )
   phi_hn = LOG( (z_tq(l) + z0m(l)) / z0h(l) )
 
-  input(1) = tl_1(l)
-  input(2) = lw_down(l)
-  input(3) = sw_surft(l)
-  input(4) = z_tq(l)
+  input(1) = lw_down(l)
+  input(2) = sw_surft(l)
+  input(3) = vshr(l)
+  input(4) = tl_1(l)
   input(5) = tstar(l)
-  input(6) = vshr(l)
+  input(6) = z_tq(l)
 
   CALL phi_mh_model_runner(input, output)
 
   phi_m(l) = phi_mn + output(1)
   phi_h(l) = phi_hn + output(2)
-
-  PRINT *, 'phi_m_h_ml phi_mn = ', phi_mn
-  PRINT *, 'phi_m_h_ml phi_hn = ', phi_hn
-  PRINT *, 'phi_m_h_ml stability corrections = ', output
-  PRINT *, 'phi_m_h_ml phi_m = ', phi_m(l)
-  PRINT *, 'phi_m_h_ml phi_h = ', phi_h(l)
 
 END DO
 !$OMP END PARALLEL DO
