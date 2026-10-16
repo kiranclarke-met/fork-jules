@@ -9511,15 +9511,15 @@ DATA metadata(734) / var_metadata(                                             &
     "K"                                                                        &
   ) /
 !-----------------------------------------------------------------------------
-! Metadata for ml-z_tq
+! Metadata for ml-z_uv
 !-----------------------------------------------------------------------------
 DATA metadata(735) / var_metadata(                                             &
 ! String identifier
-    'ml-z_tq',                                                                 &
+    'ml-z_uv',                                                                 &
 ! Variable type
     var_type_surft,                                                            &
 ! Long name
-    "ML: Height of lowest T/q level copied onto tiles",                        &
+    "ML: Height of lowest wind level copied onto tiles",                       &
 ! Units
     "m"                                                                        &
   ) /

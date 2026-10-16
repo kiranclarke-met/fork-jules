@@ -2543,13 +2543,13 @@ IF (sf_diag%l_ml_diags) THEN
   sf_diag%ml_vshr(:,:)       = 0.0
   sf_diag%ml_tl_1(:,:)       = 0.0
   sf_diag%ml_tstar(:,:)      = 0.0
-  sf_diag%ml_z_tq(:,:)       = 0.0
+  sf_diag%ml_z_uv(:,:)       = 0.0
   DO n = 1,nsurft
 !$OMP PARALLEL DO IF(surft_pts(n) > 1) DEFAULT(NONE) SCHEDULE(STATIC)          &
 !$OMP SHARED( n, surft_pts, surft_index, land_index, t_i_length, sf_diag,      &
 !$OMP         phi_m_ml_surft, phi_mn_ml_surft, rhokm_1_surft, vshr_land,       &
 !$OMP         v_s_surft, u_s_std_surft, cd_surft, lw_down, sw_surft, tl_1,     &
-!$OMP         tstar_surft, z1_tq )                                             &
+!$OMP         tstar_surft, z1_uv )                                             &
 !$OMP PRIVATE( i, j, k, l )
     DO k = 1,surft_pts(n)
       l = surft_index(k,n)
@@ -2566,7 +2566,7 @@ IF (sf_diag%l_ml_diags) THEN
       sf_diag%ml_vshr(l,n)       = vshr_land(i,j)
       sf_diag%ml_tl_1(l,n)       = tl_1(i,j)
       sf_diag%ml_tstar(l,n)      = tstar_surft(l,n)
-      sf_diag%ml_z_tq(l,n)       = z1_tq(i,j)
+      sf_diag%ml_z_uv(l,n)       = z1_uv(i,j)
     END DO
 !$OMP END PARALLEL DO
   END DO

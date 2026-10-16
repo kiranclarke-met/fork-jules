@@ -910,7 +910,7 @@ DO j = 1,nvars
 
   CASE ( 'ml-phi_m', 'ml-phi_m_corr', 'ml-tau', 'ml-ustar', 'ml-ustar_std',    &
          'ml-ustar_tau', 'ml-lw_down', 'ml-sw_surft', 'ml-vshr', 'ml-tl_1',    &
-         'ml-tstar', 'ml-z_tq' )
+         'ml-tstar', 'ml-z_uv' )
     sf_diag % l_ml_diags = .TRUE.
 
   CASE ( 'et_stom' )

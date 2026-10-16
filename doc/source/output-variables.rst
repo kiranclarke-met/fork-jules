@@ -1471,7 +1471,7 @@ that all variables align with ``ml-phi_m``.
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | ``ml-tstar``            | Tile surface temperature as used in FCDCH, i.e. at the start of the timestep (K).                       | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-z_tq``             | Height of the lowest temperature and humidity level copied onto each tile (m).                          | nsurft     |
+| ``ml-z_uv``             | Height of the lowest wind level copied onto each tile (m).                                              | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 
 Grid and indexing variables

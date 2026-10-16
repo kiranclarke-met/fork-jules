@@ -258,8 +258,8 @@ TYPE :: strnewsfdiag
   !                             Liquid/frozen water temperature, level 1 (K)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_tstar(:,:)
   !                             Tile surface temperature input to fcdch (K)
-  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_z_tq(:,:)
-  !                             Height of lowest T/q level (m)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_z_uv(:,:)
+  !                             Height of lowest wind level (m)
 
 END TYPE strnewsfdiag
 
@@ -597,7 +597,7 @@ ALLOCATE(sf_diag%ml_sw_surft(1,1))
 ALLOCATE(sf_diag%ml_vshr(1,1))
 ALLOCATE(sf_diag%ml_tl_1(1,1))
 ALLOCATE(sf_diag%ml_tstar(1,1))
-ALLOCATE(sf_diag%ml_z_tq(1,1))
+ALLOCATE(sf_diag%ml_z_uv(1,1))
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN
@@ -612,7 +612,7 @@ IMPLICIT NONE
 
 TYPE (strnewsfdiag), INTENT(IN OUT) :: sf_diag
 
-DEALLOCATE(sf_diag%ml_z_tq)
+DEALLOCATE(sf_diag%ml_z_uv)
 DEALLOCATE(sf_diag%ml_tstar)
 DEALLOCATE(sf_diag%ml_tl_1)
 DEALLOCATE(sf_diag%ml_vshr)

@@ -2332,8 +2332,8 @@ CASE ( 'ml-tstar' )
   cube_land = cube_from_array(sf_diag%ml_tstar)
   cube = map_from_land(cube_land)
 
-CASE ( 'ml-z_tq' )
-  cube_land = cube_from_array(sf_diag%ml_z_tq)
+CASE ( 'ml-z_uv' )
+  cube_land = cube_from_array(sf_diag%ml_z_uv)
   cube = map_from_land(cube_land)
 
 CASE ( 'gc' )
