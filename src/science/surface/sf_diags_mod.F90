@@ -83,6 +83,7 @@ TYPE :: strnewsfdiag
   LOGICAL :: l_resp_p_pft    = .FALSE. ! 692 plant respiration
   LOGICAL :: l_tau_1         = .FALSE. ! 695 Grid-box mean momentum flux
   LOGICAL :: l_tau_surft     = .FALSE. ! 696 Momentum flux in surface tiles
+  LOGICAL :: l_ml_diags      = .FALSE. ! ML stability-function diagnostics
 
   REAL(KIND=real_jlslsm), ALLOCATABLE :: z0h_eff_gb(:,:)
   !                    27      effective roughness length for heat
@@ -232,6 +233,33 @@ TYPE :: strnewsfdiag
   REAL(KIND=real_jlslsm), ALLOCATABLE :: tau_surft(:,:)
   !                    695      Tiled surface momentum flux on P-grid
   !                             (N/m2)
+
+  ! ML stability-function diagnostics (land_pts,nsurft), sampled at the
+  ! main land-tile call to fcdch. Gridbox inputs are copied onto each tile.
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_m(:,:)
+  !                             Stability function for momentum
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_m_corr(:,:)
+  !                             phi_m minus its neutral value phi_mn
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_tau(:,:)
+  !                             Tiled surface momentum flux (N/m2)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_ustar(:,:)
+  !                             Effective friction velocity v_s (m/s)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_ustar_std(:,:)
+  !                             Standard friction velocity u_s_std (m/s)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_ustar_tau(:,:)
+  !                             Friction velocity SQRT(cd)*vshr (m/s)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_lw_down(:,:)
+  !                             Downward LW radiation (W/m2)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_sw_surft(:,:)
+  !                             Net SW radiation on tiles (W/m2)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_vshr(:,:)
+  !                             Wind shear over land (m/s)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_tl_1(:,:)
+  !                             Liquid/frozen water temperature, level 1 (K)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_tstar(:,:)
+  !                             Tile surface temperature input to fcdch (K)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_z_tq(:,:)
+  !                             Height of lowest T/q level (m)
 
 END TYPE strnewsfdiag
 
@@ -557,6 +585,19 @@ IF (sf_diag%l_tau_surft) THEN
 ELSE
   ALLOCATE(sf_diag%tau_surft(1,1))
 END IF
+! ML diagnostics are standalone-only, so l_ml_diags is never set here.
+ALLOCATE(sf_diag%ml_phi_m(1,1))
+ALLOCATE(sf_diag%ml_phi_m_corr(1,1))
+ALLOCATE(sf_diag%ml_tau(1,1))
+ALLOCATE(sf_diag%ml_ustar(1,1))
+ALLOCATE(sf_diag%ml_ustar_std(1,1))
+ALLOCATE(sf_diag%ml_ustar_tau(1,1))
+ALLOCATE(sf_diag%ml_lw_down(1,1))
+ALLOCATE(sf_diag%ml_sw_surft(1,1))
+ALLOCATE(sf_diag%ml_vshr(1,1))
+ALLOCATE(sf_diag%ml_tl_1(1,1))
+ALLOCATE(sf_diag%ml_tstar(1,1))
+ALLOCATE(sf_diag%ml_z_tq(1,1))
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN
@@ -571,6 +612,18 @@ IMPLICIT NONE
 
 TYPE (strnewsfdiag), INTENT(IN OUT) :: sf_diag
 
+DEALLOCATE(sf_diag%ml_z_tq)
+DEALLOCATE(sf_diag%ml_tstar)
+DEALLOCATE(sf_diag%ml_tl_1)
+DEALLOCATE(sf_diag%ml_vshr)
+DEALLOCATE(sf_diag%ml_sw_surft)
+DEALLOCATE(sf_diag%ml_lw_down)
+DEALLOCATE(sf_diag%ml_ustar_tau)
+DEALLOCATE(sf_diag%ml_ustar_std)
+DEALLOCATE(sf_diag%ml_ustar)
+DEALLOCATE(sf_diag%ml_tau)
+DEALLOCATE(sf_diag%ml_phi_m_corr)
+DEALLOCATE(sf_diag%ml_phi_m)
 DEALLOCATE(sf_diag%tau_surft)
 DEALLOCATE(sf_diag%tau_1)
 DEALLOCATE(sf_diag%resp_p_pft)

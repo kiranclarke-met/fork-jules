@@ -9367,4 +9367,160 @@ DATA metadata(723) / var_metadata(                                             &
 ! Units
     "kg m-2 s-1"                                                               &
   ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-phi_m
+!-----------------------------------------------------------------------------
+DATA metadata(724) / var_metadata(                                             &
+! String identifier
+    'ml-phi_m',                                                                &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Tile stability function for momentum (phi_m)",                        &
+! Units
+    ""                                                                         &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-phi_m_corr
+!-----------------------------------------------------------------------------
+DATA metadata(725) / var_metadata(                                             &
+! String identifier
+    'ml-phi_m_corr',                                                           &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Tile phi_m minus its neutral value (phi_m - phi_mn)",                 &
+! Units
+    ""                                                                         &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-tau
+!-----------------------------------------------------------------------------
+DATA metadata(726) / var_metadata(                                             &
+! String identifier
+    'ml-tau',                                                                  &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Tile surface momentum flux",                                          &
+! Units
+    "N m-2"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-ustar
+!-----------------------------------------------------------------------------
+DATA metadata(727) / var_metadata(                                             &
+! String identifier
+    'ml-ustar',                                                                &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Tile effective friction velocity (v_s)",                              &
+! Units
+    "m s-1"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-ustar_std
+!-----------------------------------------------------------------------------
+DATA metadata(728) / var_metadata(                                             &
+! String identifier
+    'ml-ustar_std',                                                            &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Tile standard friction velocity (u_s_std)",                           &
+! Units
+    "m s-1"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-ustar_tau
+!-----------------------------------------------------------------------------
+DATA metadata(729) / var_metadata(                                             &
+! String identifier
+    'ml-ustar_tau',                                                            &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Tile friction velocity SQRT(cd)*vshr",                                &
+! Units
+    "m s-1"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-lw_down
+!-----------------------------------------------------------------------------
+DATA metadata(730) / var_metadata(                                             &
+! String identifier
+    'ml-lw_down',                                                              &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Downward LW radiation copied onto tiles",                             &
+! Units
+    "W m-2"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-sw_surft
+!-----------------------------------------------------------------------------
+DATA metadata(731) / var_metadata(                                             &
+! String identifier
+    'ml-sw_surft',                                                             &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Tile net SW radiation",                                               &
+! Units
+    "W m-2"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-vshr
+!-----------------------------------------------------------------------------
+DATA metadata(732) / var_metadata(                                             &
+! String identifier
+    'ml-vshr',                                                                 &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Land wind shear copied onto tiles",                                   &
+! Units
+    "m s-1"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-tl_1
+!-----------------------------------------------------------------------------
+DATA metadata(733) / var_metadata(                                             &
+! String identifier
+    'ml-tl_1',                                                                 &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Lowest level liquid water temperature on tiles",                      &
+! Units
+    "K"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-tstar
+!-----------------------------------------------------------------------------
+DATA metadata(734) / var_metadata(                                             &
+! String identifier
+    'ml-tstar',                                                                &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Tile surface temperature input to fcdch",                             &
+! Units
+    "K"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-z_tq
+!-----------------------------------------------------------------------------
+DATA metadata(735) / var_metadata(                                             &
+! String identifier
+    'ml-z_tq',                                                                 &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: Height of lowest T/q level copied onto tiles",                        &
+! Units
+    "m"                                                                        &
+  ) /
 #endif

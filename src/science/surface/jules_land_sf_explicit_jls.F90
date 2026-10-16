@@ -891,6 +891,12 @@ REAL(KIND=real_jlslsm) ::                                                      &
 ,recip_l_mo_surft(land_pts,nsurft)                                             &
                              ! Reciprocal of the Monin-Obukhov
                              ! length for tiles (m^-1).
+,phi_m_ml_surft(land_pts,nsurft)                                               &
+                             ! Stability function for momentum
+                             ! (ML diagnostic).
+,phi_mn_ml_surft(land_pts,nsurft)                                              &
+                             ! Neutral stability function for
+                             ! momentum (ML diagnostic).
 ,z0m_soil(land_pts,nsurft)                                                     &
                              ! Bare soil momentum roughness length
                              ! for use in 1 tile dust scheme
@@ -2314,7 +2320,8 @@ DO n = 1,nsurft
     rhostar,bq_1,bt_1,                                                         &
     cd_surft(:,n),ch_surft(:,n),cd_std(:,n),                                   &
     v_s_surft(:,n),v_s_std(:,n),recip_l_mo_surft(:,n),                         &
-    u_s_iter_surft(:,n)                                                        &
+    u_s_iter_surft(:,n),                                                       &
+    phi_m_out=phi_m_ml_surft(:,n),phi_mn_out=phi_mn_ml_surft(:,n)              &
     )
 END DO
 
@@ -2518,6 +2525,52 @@ DO n = 1,nsurft
   END DO
 !$OMP END PARALLEL DO
 END DO
+
+!-----------------------------------------------------------------------
+! ML stability-function diagnostics: target (phi_m), its departure from
+! neutral, momentum flux, friction velocities and the NN input features,
+! all on land tiles as seen by the main call to fcdch.
+!-----------------------------------------------------------------------
+IF (sf_diag%l_ml_diags) THEN
+  sf_diag%ml_phi_m(:,:)      = 0.0
+  sf_diag%ml_phi_m_corr(:,:) = 0.0
+  sf_diag%ml_tau(:,:)        = 0.0
+  sf_diag%ml_ustar(:,:)      = 0.0
+  sf_diag%ml_ustar_std(:,:)  = 0.0
+  sf_diag%ml_ustar_tau(:,:)  = 0.0
+  sf_diag%ml_lw_down(:,:)    = 0.0
+  sf_diag%ml_sw_surft(:,:)   = 0.0
+  sf_diag%ml_vshr(:,:)       = 0.0
+  sf_diag%ml_tl_1(:,:)       = 0.0
+  sf_diag%ml_tstar(:,:)      = 0.0
+  sf_diag%ml_z_tq(:,:)       = 0.0
+  DO n = 1,nsurft
+!$OMP PARALLEL DO IF(surft_pts(n) > 1) DEFAULT(NONE) SCHEDULE(STATIC)          &
+!$OMP SHARED( n, surft_pts, surft_index, land_index, t_i_length, sf_diag,      &
+!$OMP         phi_m_ml_surft, phi_mn_ml_surft, rhokm_1_surft, vshr_land,       &
+!$OMP         v_s_surft, u_s_std_surft, cd_surft, lw_down, sw_surft, tl_1,     &
+!$OMP         tstar_surft, z1_tq )                                             &
+!$OMP PRIVATE( i, j, k, l )
+    DO k = 1,surft_pts(n)
+      l = surft_index(k,n)
+      j = (land_index(l) - 1) / t_i_length + 1
+      i = land_index(l) - (j-1) * t_i_length
+      sf_diag%ml_phi_m(l,n)      = phi_m_ml_surft(l,n)
+      sf_diag%ml_phi_m_corr(l,n) = phi_m_ml_surft(l,n) - phi_mn_ml_surft(l,n)
+      sf_diag%ml_tau(l,n)        = rhokm_1_surft(l,n) * vshr_land(i,j)
+      sf_diag%ml_ustar(l,n)      = v_s_surft(l,n)
+      sf_diag%ml_ustar_std(l,n)  = u_s_std_surft(l,n)
+      sf_diag%ml_ustar_tau(l,n)  = SQRT(cd_surft(l,n)) * vshr_land(i,j)
+      sf_diag%ml_lw_down(l,n)    = lw_down(i,j)
+      sf_diag%ml_sw_surft(l,n)   = sw_surft(l,n)
+      sf_diag%ml_vshr(l,n)       = vshr_land(i,j)
+      sf_diag%ml_tl_1(l,n)       = tl_1(i,j)
+      sf_diag%ml_tstar(l,n)      = tstar_surft(l,n)
+      sf_diag%ml_z_tq(l,n)       = z1_tq(i,j)
+    END DO
+!$OMP END PARALLEL DO
+  END DO
+END IF
 
 ! aerodynamic resistance diagnostic
 IF (sf_diag%l_ra) THEN

@@ -2285,6 +2285,57 @@ CASE ( 'tau' )
   cube_land = cube_from_array(sf_diag%tau_surft)
   cube = map_from_land(cube_land)
 
+  !-----------------------------------------------------------------------------
+  ! ML stability-function diagnostics (land tiles)
+  !-----------------------------------------------------------------------------
+CASE ( 'ml-phi_m' )
+  cube_land = cube_from_array(sf_diag%ml_phi_m)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-phi_m_corr' )
+  cube_land = cube_from_array(sf_diag%ml_phi_m_corr)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-tau' )
+  cube_land = cube_from_array(sf_diag%ml_tau)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-ustar' )
+  cube_land = cube_from_array(sf_diag%ml_ustar)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-ustar_std' )
+  cube_land = cube_from_array(sf_diag%ml_ustar_std)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-ustar_tau' )
+  cube_land = cube_from_array(sf_diag%ml_ustar_tau)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-lw_down' )
+  cube_land = cube_from_array(sf_diag%ml_lw_down)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-sw_surft' )
+  cube_land = cube_from_array(sf_diag%ml_sw_surft)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-vshr' )
+  cube_land = cube_from_array(sf_diag%ml_vshr)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-tl_1' )
+  cube_land = cube_from_array(sf_diag%ml_tl_1)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-tstar' )
+  cube_land = cube_from_array(sf_diag%ml_tstar)
+  cube = map_from_land(cube_land)
+
+CASE ( 'ml-z_tq' )
+  cube_land = cube_from_array(sf_diag%ml_z_tq)
+  cube = map_from_land(cube_land)
+
 CASE ( 'gc' )
   cube_land = cube_from_array(progs%gc_surft)
   cube = map_from_land(cube_land)

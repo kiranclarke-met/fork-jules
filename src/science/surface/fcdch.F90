@@ -38,7 +38,8 @@ SUBROUTINE fcdch (                                                             &
  t_elev,tsurf,tstar,vfrac,emis,emis_soil,                                      &
  anthrop_heat,scaling_urban,alpha1,hcons,ashtf,                                &
  rhostar,bq_1,bt_1,                                                            &
- cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std                                &
+ cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,                               &
+ phi_m_out,phi_mn_out                                                          &
 )
 
 USE atm_fields_bounds_mod, ONLY: tdims
@@ -239,6 +240,14 @@ REAL(KIND=real_jlslsm) ::                                                      &
 !                    ! OUT Reciprocal of the Monin-Obukhov length
 !                    !     (m^-1).
 
+REAL(KIND=real_jlslsm), INTENT(OUT), OPTIONAL ::                               &
+ phi_m_out(points)                                                             &
+!                    ! OUT Final stability function for momentum, consistent
+!                    !     with the returned cdv (ML diagnostic).
+,phi_mn_out(points)
+!                    ! OUT Neutral (1/L = 0) value of the stability
+!                    !     function for momentum (ML diagnostic).
+
 !    Workspace usage----------------------------------------------------
 
 !     Local work arrays.
@@ -273,6 +282,8 @@ REAL(KIND=real_jlslsm) ::                                                      &
                      ! Previous value of u_s_std
 ,recip_l_mo_old(points)                                                        &
                      ! Previous value of recip_l_mo
+,phi_m_old(points)                                                             &
+                     ! Previous value of phi_m
 ,db_old(points)                                                                &
                      ! Previous value of db
 ,db_older(points)                                                              &
@@ -344,6 +355,14 @@ INTEGER :: n_its ! Number of iterations for Monin-Obukhov length
 
 INTEGER :: indexi(surft_pts), indexj(surft_pts)
               ! Arrays to store horizontal field indices i and j
+
+REAL(KIND=real_jlslsm), ALLOCATABLE ::                                         &
+ recip_l_mo_neutral(:)                                                         &
+              ! Zero 1/L used to evaluate neutral stability functions
+,phi_mn_tmp(:)                                                                 &
+              ! Neutral stability function for momentum
+,phi_hn_tmp(:)
+              ! Neutral stability function for scalars (unused)
 
 REAL(KIND=real_jlslsm) ::                                                      &
  b_flux                                                                        &
@@ -637,6 +656,7 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old,                 &
 !$OMP        v_s, v_s_old, v_s_std, v_s_std_old,                               &
 !$OMP        u_s_std, u_s_std_old, recip_l_mo, recip_l_mo_old,                 &
+!$OMP        phi_m, phi_m_old,                                                 &
 !$OMP        db_diff_old, db_diff, db_old, db_older, indexi, indexj) SCHEDULE(STATIC)
       DO k = 1,surft_pts
         l = surft_index(k)
@@ -686,6 +706,7 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
         v_s_std_old(l)    = v_s_std(l)
         u_s_std_old(l)    = u_s_std(l)
         recip_l_mo_old(l) = recip_l_mo(l)
+        phi_m_old(l)      = phi_m(l)
 
       END DO
 !$OMP END PARALLEL DO
@@ -1058,6 +1079,7 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old,                 &
 !$OMP        v_s, v_s_old, v_s_std, v_s_std_old,                               &
 !$OMP        u_s_std, u_s_std_old, recip_l_mo, recip_l_mo_old,                 &
+!$OMP        phi_m, phi_m_old,                                                 &
 !$OMP        db_diff_old, db_diff, db_old, db_older, indexi, indexj) SCHEDULE(STATIC)
       DO k = 1,surft_pts
         l = surft_index(k)
@@ -1107,6 +1129,7 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
         v_s_std_old(l)    = v_s_std(l)
         u_s_std_old(l)    = u_s_std(l)
         recip_l_mo_old(l) = recip_l_mo(l)
+        phi_m_old(l)      = phi_m(l)
 
       END DO
 !$OMP END PARALLEL DO
@@ -1270,7 +1293,7 @@ IF (l_mo_buoyancy_calc) THEN
 !$OMP SHARED(surft_pts, surft_index, pts_index, t_i_length, db, db_older,      &
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old, v_s, v_s_old,   &
 !$OMP        v_s_std, v_s_std_old, u_s_std, u_s_std_old, recip_l_mo,           &
-!$OMP        recip_l_mo_old, tolerance) SCHEDULE(STATIC)
+!$OMP        recip_l_mo_old, phi_m, phi_m_old, tolerance) SCHEDULE(STATIC)
   DO k = 1,surft_pts
     l = surft_index(k)
 
@@ -1287,9 +1310,62 @@ IF (l_mo_buoyancy_calc) THEN
       v_s_std(l)    = v_s_std_old(l)
       u_s_std(l)    = u_s_std_old(l)
       recip_l_mo(l) = recip_l_mo_old(l)
+      phi_m(l)      = phi_m_old(l)
     END IF
   END DO
 !$OMP END PARALLEL DO
+END IF
+
+!-----------------------------------------------------------------------
+! ML diagnostics: final phi_m and its neutral value (1/L = 0), evaluated
+! with the same stability routine and roughness lengths as phi_m.
+!-----------------------------------------------------------------------
+IF (PRESENT(phi_m_out) .OR. PRESENT(phi_mn_out)) THEN
+  ALLOCATE(recip_l_mo_neutral(points), phi_mn_tmp(points), phi_hn_tmp(points))
+  recip_l_mo_neutral(:) = 0.0
+  phi_mn_tmp(:)         = 0.0
+  phi_hn_tmp(:)         = 0.0
+
+  IF (l_vegdrag) THEN
+    SELECT CASE (i_modiscopt)
+    CASE (off)
+      CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
+                            recip_l_mo_neutral, z1_uv, z1_tq, canht, lai,      &
+                            z0m, z0h, phi_mn_tmp, phi_hn_tmp)
+    CASE (on)
+      CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
+                            recip_l_mo_neutral, z1_uv_top, z1_tq_top, canht,   &
+                            lai, z0m, z0h, phi_mn_tmp, phi_hn_tmp)
+    END SELECT
+  ELSE
+    SELECT CASE (i_modiscopt)
+    CASE (off)
+      CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
+                     recip_l_mo_neutral,z1_uv,z1_tq,z0m,z0h,                   &
+                     phi_mn_tmp,phi_hn_tmp)
+    CASE (on)
+      CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
+                     recip_l_mo_neutral,z1_uv_top,z1_tq_top,z0m,z0h,           &
+                     phi_mn_tmp,phi_hn_tmp)
+    END SELECT
+  END IF
+
+  IF (PRESENT(phi_m_out)) THEN
+    phi_m_out(:) = 0.0
+    DO k = 1,surft_pts
+      l = surft_index(k)
+      phi_m_out(l) = phi_m(l)
+    END DO
+  END IF
+  IF (PRESENT(phi_mn_out)) THEN
+    phi_mn_out(:) = 0.0
+    DO k = 1,surft_pts
+      l = surft_index(k)
+      phi_mn_out(l) = phi_mn_tmp(l)
+    END DO
+  END IF
+
+  DEALLOCATE(phi_hn_tmp, phi_mn_tmp, recip_l_mo_neutral)
 END IF
 
 !-----------------------------------------------------------------------
