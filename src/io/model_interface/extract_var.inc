@@ -2286,7 +2286,8 @@ CASE ( 'tau' )
   cube = map_from_land(cube_land)
 
   !-----------------------------------------------------------------------------
-  ! ML stability-function diagnostics (land tiles)
+  ! ML stability-function diagnostics (tile-wise for phi, sw_surft and tstar,
+  ! gridbox means for the rest)
   !-----------------------------------------------------------------------------
 CASE ( 'ml-phi_m' )
   cube_land = cube_from_array(sf_diag%ml_phi_m)
@@ -2305,23 +2306,23 @@ CASE ( 'ml-phi_h_corr' )
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-tau' )
-  cube_land = cube_from_array(sf_diag%ml_tau)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_tau, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-ustar' )
-  cube_land = cube_from_array(sf_diag%ml_ustar)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_ustar, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-ustar_std' )
-  cube_land = cube_from_array(sf_diag%ml_ustar_std)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_ustar_std, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-ustar_tau' )
-  cube_land = cube_from_array(sf_diag%ml_ustar_tau)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_ustar_tau, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-lw_down' )
-  cube_land = cube_from_array(sf_diag%ml_lw_down)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_lw_down, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-sw_surft' )
@@ -2329,11 +2330,11 @@ CASE ( 'ml-sw_surft' )
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-vshr' )
-  cube_land = cube_from_array(sf_diag%ml_vshr)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_vshr, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-tl_1' )
-  cube_land = cube_from_array(sf_diag%ml_tl_1)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_tl_1, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-tstar' )
@@ -2341,7 +2342,7 @@ CASE ( 'ml-tstar' )
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-z_uv' )
-  cube_land = cube_from_array(sf_diag%ml_z_uv)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_z_uv, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'gc' )
