@@ -243,12 +243,13 @@ REAL(KIND=real_jlslsm) ::                                                      &
 !                    ! OUT Reciprocal of the Monin-Obukhov length
 !                    !     (m^-1).
 
-! Optional arguments for the ML stability-function diagnostic flow. They are
-! only used when l_ml_flow is present and true, in which case all of them must
-! be present. None of them affect the standard outputs above.
+! Optional arguments for the neural network (NN) stability functions. If
+! tl_1, lw_down and sw_surft are all present (land tiles), phi_m and phi_h
+! come from the NN instead of the standard JULES similarity functions.
+! The *_ml_out arguments are only set if l_ml_flow is present and true.
 LOGICAL, INTENT(IN), OPTIONAL ::                                               &
  l_ml_flow
-!                    ! IN Switch to run the ML diagnostic flow.
+!                    ! IN Switch to return the ML diagnostics.
 
 REAL(KIND=real_jlslsm), INTENT(IN), OPTIONAL ::                                &
  tl_1(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                     &
@@ -269,14 +270,14 @@ REAL(KIND=real_jlslsm), INTENT(OUT), OPTIONAL ::                               &
 ,phi_h_corr_ml_out(points)                                                     &
 !                    ! OUT ML correction to neutral phi_h (phi_h - phi_hn).
 ,cd_ml_out(points)                                                             &
-!                    ! OUT ML-derived dimensionless momentum transfer
-!                    !     coefficient including orographic form drag.
+!                    ! OUT Dimensionless momentum transfer coefficient
+!                    !     including orographic form drag (= cdv).
 ,v_s_ml_out(points)                                                            &
-!                    ! OUT ML-derived surface layer scaling velocity
-!                    !     including orographic form drag (m/s).
+!                    ! OUT Surface layer scaling velocity including
+!                    !     orographic form drag (= v_s) (m/s).
 ,v_s_std_ml_out(points)
-!                    ! OUT ML-derived surface layer scaling velocity
-!                    !     excluding orographic form drag (m/s).
+!                    ! OUT Surface layer scaling velocity excluding
+!                    !     orographic form drag (= v_s_std) (m/s).
 
 !    Workspace usage----------------------------------------------------
 
@@ -384,27 +385,21 @@ INTEGER :: n_its ! Number of iterations for Monin-Obukhov length
 INTEGER :: indexi(surft_pts), indexj(surft_pts)
               ! Arrays to store horizontal field indices i and j
 
-! Work variables for the ML stability-function diagnostic flow.
+! Work variables for the neural network (NN) stability functions.
 REAL(KIND=real_jlslsm), PARAMETER :: phi_min_ml = 0.5
-              ! Lower limit applied to the ML phi_m and phi_h before they
+              ! Lower limit applied to the NN phi_m and phi_h before they
               ! are used to derive transfer coefficients.
 
-LOGICAL :: l_ml   ! True if the ML diagnostic flow is run.
+LOGICAL :: l_nn_phi   ! True if phi_m and phi_h come from the NN.
 
 REAL(KIND=real_jlslsm) ::                                                      &
  tl_1_ml(points), lw_down_ml(points), vshr_ml(points),                         &
  z_uv_ml(points), z_tq_ml(points)                                              &
-              ! Tile-wise copies of gridbox inputs to the neural network.
-,phi_m_ml(points), phi_h_ml(points)                                            &
-              ! ML phi_m and phi_h, clamped to at least phi_min_ml.
-,cdv_ml(points), cdv_std_ml(points), chv_ml(points)                            &
-              ! ML-derived transfer coefficients (m/s).
-,v_s_ml(points), v_s_std_ml(points)
-              ! ML-derived surface layer scaling velocities (m/s).
-
-REAL(KIND=real_jlslsm) ::                                                      &
- beta_init_ml, beta_gust_ml
-              ! Convective gust parameters matching the selected iteration.
+              ! Tile-wise copies of gridbox inputs to the NN.
+,phi_m_nn(points), phi_h_nn(points)                                            &
+              ! Unclamped NN phi_m and phi_h.
+,phi_m_corr_nn(points), phi_h_corr_nn(points)
+              ! NN corrections to the neutral phi_m and phi_h.
 
 REAL(KIND=real_jlslsm) ::                                                      &
  b_flux                                                                        &
@@ -461,6 +456,48 @@ DO k = 1,surft_pts
   indexi(k) = pts_index(l) - (indexj(k) - 1) * t_i_length
 END DO
 
+!-----------------------------------------------------------------------
+! On land tiles, phi_m and phi_h come from the neural network. They do not
+! depend on the Obukhov length, so the NN is called once here and the
+! results are used throughout the iteration below. The NN can give values
+! that are zero or negative, so these are limited to at least phi_min_ml.
+!-----------------------------------------------------------------------
+l_nn_phi = PRESENT(tl_1) .AND. PRESENT(lw_down) .AND. PRESENT(sw_surft)
+
+phi_m_nn(:)      = 0.0
+phi_h_nn(:)      = 0.0
+phi_m_corr_nn(:) = 0.0
+phi_h_corr_nn(:) = 0.0
+
+IF (l_nn_phi) THEN
+  tl_1_ml(:)    = 0.0
+  lw_down_ml(:) = 0.0
+  vshr_ml(:)    = 0.0
+  z_uv_ml(:)    = 0.0
+  z_tq_ml(:)    = 0.0
+
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    j = indexj(k)
+    i = indexi(k)
+    tl_1_ml(l)    = tl_1(i,j)
+    lw_down_ml(l) = lw_down(i,j)
+    vshr_ml(l)    = vshr(i,j)
+    z_uv_ml(l)    = z1_uv(i,j)
+    z_tq_ml(l)    = z1_tq(i,j)
+  END DO
+
+  CALL phi_m_h_ml(points,surft_pts,surft_index,                                &
+                  tl_1_ml,lw_down_ml,sw_surft,z_uv_ml,z_tq_ml,tstar,vshr_ml,   &
+                  z0m,z0h,phi_m_nn,phi_h_nn,phi_m_corr_nn,phi_h_corr_nn)
+
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    phi_m(l) = MAX(phi_m_nn(l), phi_min_ml)
+    phi_h(l) = MAX(phi_h_nn(l), phi_min_ml)
+  END DO
+END IF
+
 n_its         = 8     ! Found typically 0.2% from converged value
 tolerance     = 0.25  ! Set tolerance value for convergence of db to 25%
 !-----------------------------------------------------------------------
@@ -515,27 +552,31 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
     CALL can_drag_z0(points, surft_pts, surft_index,                           &
                      recip_l_mo, canht, lai,                                   &
                      z0m, z0h, zdt)
+    ! Replaced by the neural network phi_m and phi_h set above.
     SELECT CASE (i_modiscopt)
     CASE (off)
-      CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
-                            recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
-                            phi_m, phi_h)
+      ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
+      !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
+      !                       phi_m, phi_h)
     CASE (on)
-      CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
-                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-                       phi_m, phi_h)
+      ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
+      !                recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+      !                phi_m, phi_h)
     END SELECT
   ELSE
-    SELECT CASE (i_modiscopt)
-    CASE (off)
-      CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
-                     recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
-                     phi_m,phi_h)
-    CASE (on)
-      CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
-                     recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
-                     phi_m,phi_h)
-    END SELECT
+    ! Standard JULES phi_m and phi_h, used where the NN is not (sea).
+    IF (.NOT. l_nn_phi) THEN
+      SELECT CASE (i_modiscopt)
+      CASE (off)
+        CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
+                       recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
+                       phi_m,phi_h)
+      CASE (on)
+        CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
+                       recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
+                       phi_m,phi_h)
+      END SELECT
+    END IF
   END IF
 
   IF (l_vegdrag) THEN
@@ -840,15 +881,16 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                        recip_l_mo, canht, lai,                                 &
                        z0m, z0h, zdt)
 
+      ! Replaced by the neural network phi_m and phi_h set above.
       SELECT CASE (i_modiscopt)
       CASE (off)
-        CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
-                              recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
-                              phi_m, phi_h)
+        ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,     &
+        !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,&
+        !                       phi_m, phi_h)
       CASE (on)
-        CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
-                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-                       phi_m, phi_h)
+        ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index, &
+        !              recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+        !                phi_m, phi_h)
       END SELECT
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -863,16 +905,19 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
       END DO
 !$OMP END PARALLEL DO
     ELSE
-      SELECT CASE (i_modiscopt)
-      CASE (off)
-        CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
-                       recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
-                       phi_m,phi_h)
-      CASE (on)
-        CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
-                       recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
-                       phi_m,phi_h)
-      END SELECT
+      ! Standard JULES phi_m and phi_h, used where the NN is not (sea).
+      IF (.NOT. l_nn_phi) THEN
+        SELECT CASE (i_modiscopt)
+        CASE (off)
+          CALL phi_m_h ( points,surft_pts,surft_index,pts_index,               &
+                         recip_l_mo,z1_uv,z1_tq,z0m,z0h,                       &
+                         phi_m,phi_h)
+        CASE (on)
+          CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,           &
+                         recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,               &
+                         phi_m,phi_h)
+        END SELECT
+      END IF
 
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -938,27 +983,31 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
     CALL can_drag_z0(points, surft_pts, surft_index,                           &
                      recip_l_mo, canht, lai,                                   &
                      z0m, z0h, zdt)
+    ! Replaced by the neural network phi_m and phi_h set above.
     SELECT CASE (i_modiscopt)
     CASE (off)
-      CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
-                            recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
-                            phi_m, phi_h)
+      ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
+      !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
+      !                       phi_m, phi_h)
     CASE (on)
-      CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
-                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-                       phi_m, phi_h)
+      ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
+      !                recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+      !                phi_m, phi_h)
     END SELECT
   ELSE
-    SELECT CASE (i_modiscopt)
-    CASE (off)
-      CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
-                     recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
-                     phi_m,phi_h)
-    CASE (on)
-      CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
-                     recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
-                     phi_m,phi_h)
-    END SELECT
+    ! Standard JULES phi_m and phi_h, used where the NN is not (sea).
+    IF (.NOT. l_nn_phi) THEN
+      SELECT CASE (i_modiscopt)
+      CASE (off)
+        CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
+                       recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
+                       phi_m,phi_h)
+      CASE (on)
+        CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
+                       recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
+                       phi_m,phi_h)
+      END SELECT
+    END IF
   END IF
 
   IF (l_vegdrag) THEN
@@ -1270,15 +1319,16 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
                        recip_l_mo, canht, lai,                                 &
                        z0m, z0h, zdt)
 
+      ! Replaced by the neural network phi_m and phi_h set above.
       SELECT CASE (i_modiscopt)
       CASE (off)
-        CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
-                              recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
-                              phi_m, phi_h)
+        ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,     &
+        !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,&
+        !                       phi_m, phi_h)
       CASE (on)
-        CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
-                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-                       phi_m, phi_h)
+        ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index, &
+        !              recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+        !                phi_m, phi_h)
       END SELECT
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -1293,16 +1343,19 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
       END DO
 !$OMP END PARALLEL DO
     ELSE
-      SELECT CASE (i_modiscopt)
-      CASE (off)
-        CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
-                       recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
-                       phi_m,phi_h)
-      CASE (on)
-        CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
-                       recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
-                       phi_m,phi_h)
-      END SELECT
+      ! Standard JULES phi_m and phi_h, used where the NN is not (sea).
+      IF (.NOT. l_nn_phi) THEN
+        SELECT CASE (i_modiscopt)
+        CASE (off)
+          CALL phi_m_h ( points,surft_pts,surft_index,pts_index,               &
+                         recip_l_mo,z1_uv,z1_tq,z0m,z0h,                       &
+                         phi_m,phi_h)
+        CASE (on)
+          CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,           &
+                         recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,               &
+                         phi_m,phi_h)
+        END SELECT
+      END IF
 
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -1370,151 +1423,19 @@ END DO
 !$OMP END PARALLEL DO
 
 !-----------------------------------------------------------------------
-! ML stability-function diagnostic flow.
-! The neural network predicts phi_m and phi_h directly from the forcing,
-! so they do not depend on the Obukhov length. They are held fixed while
-! the transfer coefficients and scaling velocities are iterated in the same
-! way as above, using the final buoyancy difference and roughness lengths
-! from the standard calculation. Only the *_ml_out arguments are set here.
+! ML diagnostics. phi_m and phi_h from the NN are returned unclamped. The
+! transfer coefficient and scaling velocities are those used by the model.
 !-----------------------------------------------------------------------
-l_ml = .FALSE.
-IF (PRESENT(l_ml_flow)) l_ml = l_ml_flow
-
-IF (l_ml) THEN
-
-  tl_1_ml(:)    = 0.0
-  lw_down_ml(:) = 0.0
-  vshr_ml(:)    = 0.0
-  z_uv_ml(:)    = 0.0
-  z_tq_ml(:)    = 0.0
-  phi_m_ml_out(:)      = 0.0
-  phi_h_ml_out(:)      = 0.0
-  phi_m_corr_ml_out(:) = 0.0
-  phi_h_corr_ml_out(:) = 0.0
-  cd_ml_out(:)         = 0.0
-  v_s_ml_out(:)        = 0.0
-  v_s_std_ml_out(:)    = 0.0
-
-  DO k = 1,surft_pts
-    l = surft_index(k)
-    j = indexj(k)
-    i = indexi(k)
-    tl_1_ml(l)    = tl_1(i,j)
-    lw_down_ml(l) = lw_down(i,j)
-    vshr_ml(l)    = vshr(i,j)
-    z_uv_ml(l)    = z1_uv(i,j)
-    z_tq_ml(l)    = z1_tq(i,j)
-  END DO
-
-  CALL phi_m_h_ml(points,surft_pts,surft_index,                                &
-                  tl_1_ml,lw_down_ml,sw_surft,z_uv_ml,z_tq_ml,tstar,vshr_ml,   &
-                  z0m,z0h,phi_m_ml_out,phi_h_ml_out,                           &
-                  phi_m_corr_ml_out,phi_h_corr_ml_out)
-
-  IF (cor_mo_iter == Improve_Initial_Guess) THEN
-    beta_init_ml = beta_cnv_bl
-    beta_gust_ml = beta_cnv_bl
-  ELSE IF (srf_ex_cnv_gust == ip_srfexwithcnv) THEN
-    beta_init_ml = beta
-    beta_gust_ml = beta_cndd
-  ELSE
-    beta_init_ml = beta
-    beta_gust_ml = beta
+IF (PRESENT(l_ml_flow)) THEN
+  IF (l_ml_flow .AND. l_nn_phi) THEN
+    phi_m_ml_out(:)      = phi_m_nn(:)
+    phi_h_ml_out(:)      = phi_h_nn(:)
+    phi_m_corr_ml_out(:) = phi_m_corr_nn(:)
+    phi_h_corr_ml_out(:) = phi_h_corr_nn(:)
+    cd_ml_out(:)         = cdv(:)
+    v_s_ml_out(:)        = v_s(:)
+    v_s_std_ml_out(:)    = v_s_std(:)
   END IF
-
-  DO k = 1,surft_pts
-    l = surft_index(k)
-    j = indexj(k)
-    i = indexi(k)
-    ! The ML phi can be zero or negative, which would give negative transfer
-    ! coefficients, so limit them before use. The raw values are returned.
-    phi_m_ml(l) = MAX(phi_m_ml_out(l), phi_min_ml)
-    phi_h_ml(l) = MAX(phi_h_ml_out(l), phi_min_ml)
-
-    ! Initial scaling velocities, as for the standard iteration.
-    IF (db(l)  <   0.0 .AND. vshr(i,j)  <   2.0) THEN
-      v_s_std_ml(l) = beta_init_ml * SQRT( beta_init_ml *                      &
-                      ( vkman / phi_h_ml(l) ) * zh(i,j) * (-db(l)) )
-      IF (cor_mo_iter == Improve_Initial_Guess) THEN
-        v_s_std_ml(l) = MAX(v_s_std_ml(l),                                     &
-                            ( vkman / phi_m_ml(l) ) * vshr(i,j))
-      END IF
-      v_s_ml(l) = v_s_std_ml(l)
-    ELSE IF (l_vegdrag) THEN
-      v_s_std_ml(l) = ( vkman / phi_m_ml(l) ) * vshr(i,j)
-      v_s_ml(l) = v_s_std_ml(l) / wind_profile_factor(l)
-    ELSE
-      v_s_ml(l) = ( vkman / phi_m_ml(l) ) * vshr(i,j)
-      v_s_std_ml(l) = v_s_ml(l) * wind_profile_factor(l)
-    END IF
-  END DO
-
-  ! Iteration 0 only sets the transfer coefficients from the initial
-  ! scaling velocities; subsequent iterations update both.
-  DO it = 0,n_its
-    DO k = 1,surft_pts
-      l = surft_index(k)
-      j = indexj(k)
-      i = indexi(k)
-
-      IF (it > 0) THEN
-        b_flux = -chv_ml(l) * db(l)
-        IF ( vshr(i,j) > min_wind) THEN
-          u_s2 = cdv_ml(l) * vshr(i,j)
-        ELSE
-          u_s2 = min_ustar
-        END IF
-        u_s_std2 = cdv_std_ml(l) * vshr(i,j)
-
-        IF (db(l)  <   -EPSILON(0.0)) THEN
-          w_s = MAX( (zh(i,j) * b_flux)**third, EPSILON(0.0) )
-          SELECT CASE(srf_ex_cnv_gust)
-          CASE (off)
-            v_s_ml(l) = SQRT( 0.5 * ( beta_gust_ml * beta_gust_ml * w_s * w_s  &
-                   + SQRT( (beta_gust_ml * w_s)**4 + 4.0 * u_s2 * u_s2 )) )
-            v_s_std_ml(l) = SQRT( 0.5 * ( beta_gust_ml * beta_gust_ml          &
-                   * w_s * w_s + SQRT( (beta_gust_ml * w_s)**4                 &
-                   + 4.0 * u_s_std2 * u_s_std2 )) )
-          CASE (ip_srfexwithcnv)
-            v_s_ml(l) = SQRT( 0.5 * ( beta_gust_ml * beta_gust_ml * w_s * w_s  &
-                   + wstrcnvgust(i,j)**2                                       &
-                   + SQRT( ((beta_gust_ml * w_s)**2                            &
-                   + wstrcnvgust(i,j)**2)**2                                   &
-                   + 4.0 * u_s2 * u_s2 )) )
-            v_s_std_ml(l) = SQRT( 0.5 * ( beta_gust_ml * beta_gust_ml          &
-                   * w_s * w_s + wstrcnvgust(i,j)**2                           &
-                   + SQRT( ((beta_gust_ml * w_s)**2                            &
-                   + wstrcnvgust(i,j)**2)**2                                   &
-                   + 4.0 * u_s_std2 * u_s_std2 )) )
-          END SELECT
-        ELSE
-          v_s_ml(l) = SQRT( u_s2 )
-          v_s_std_ml(l) = SQRT( u_s_std2 )
-        END IF
-      END IF
-
-      chv_ml(l) = ( vkman / phi_h_ml(l) ) * v_s_std_ml(l)
-      IF (l_vegdrag) THEN
-        cdv_std_ml(l) = ( vkman / phi_m_ml(l) ) * v_s_std_ml(l)
-        cdv_ml(l) = cdv_std_ml(l) * ( v_s_ml(l) / v_s_std_ml(l) ) /            &
-                    wind_profile_factor(l)
-      ELSE
-        cdv_ml(l) = ( vkman / phi_m_ml(l) ) * v_s_ml(l)
-        cdv_std_ml(l) = cdv_ml(l) * ( v_s_std_ml(l) / v_s_ml(l) ) *            &
-                        wind_profile_factor(l)
-      END IF
-    END DO
-  END DO
-
-  DO k = 1,surft_pts
-    l = surft_index(k)
-    j = indexj(k)
-    i = indexi(k)
-    cd_ml_out(l)      = cdv_ml(l) / vshr(i,j)
-    v_s_ml_out(l)     = v_s_ml(l)
-    v_s_std_ml_out(l) = v_s_std_ml(l)
-  END DO
-
 END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)

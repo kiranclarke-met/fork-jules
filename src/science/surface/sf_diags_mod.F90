@@ -236,8 +236,8 @@ TYPE :: strnewsfdiag
 
   ! ML stability-function diagnostics (land_pts,nsurft), sampled at the
   ! main land-tile call to fcdch. Gridbox inputs are copied onto each tile.
-  ! phi, corrections, tau and friction velocities are from the separate ML
-  ! flow, which uses the neural network phi_m and phi_h.
+  ! phi and corrections are the unclamped neural network values; tau and
+  ! friction velocities are the model values, which use the NN phi.
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_m(:,:)
   !                             ML stability function for momentum
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_m_corr(:,:)

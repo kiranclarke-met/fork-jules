@@ -14,6 +14,7 @@
 MODULE sfl_int_mod
 
 USE phi_m_h_mod, ONLY: phi_m_h
+USE phi_m_h_ml_mod, ONLY: phi_m_h_ml => phi_m_h
 
 USE um_types, ONLY: real_jlslsm
 
@@ -32,6 +33,7 @@ SUBROUTINE sfl_int (                                                           &
 ,z1_uv,z1_tq,db                                                                &
 ,sf_diag                                                                       &
 ,cdr10m,cdr10m_n,cd10m_n,chr1p5m,chr10m                                        &
+,tl_1,lw_down,sw_surft,tstar                                                   &
 )
 
 USE atm_fields_bounds_mod, ONLY: tdims, pdims_s
@@ -130,6 +132,20 @@ REAL(KIND=real_jlslsm), INTENT(IN OUT) ::                                      &
 REAL(KIND=real_jlslsm), INTENT(OUT), OPTIONAL :: chr10m(points)
          ! OUT interpolation coefficient for 10m temperature
 
+! Optional inputs for the neural network (NN) stability functions. If all are
+! present (land tiles), phi_m and phi_h at the observation heights come from
+! the NN instead of the standard JULES similarity functions.
+REAL(KIND=real_jlslsm), INTENT(IN), OPTIONAL ::                                &
+ tl_1(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                     &
+!                        ! IN Liquid/frozen water temperature for lowest
+!                        !    atmospheric layer (K).
+,lw_down(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                  &
+!                        ! IN Surface downward LW radiation (W/m2).
+,sw_surft(points)                                                              &
+!                        ! IN Net SW radiation on tiles (W/m2).
+,tstar(points)
+!                        ! IN Surface temperature (K).
+
 !  ---------------------------------------------------------------------
 !  Define local storage.
 
@@ -148,6 +164,24 @@ REAL(KIND=real_jlslsm) ::                                                      &
 ,phi_h_obs(points)    ! Monin-Obukhov stability function for
 !                           ! scalars integrated to their observation
 !                           ! height.
+
+REAL(KIND=real_jlslsm), PARAMETER :: phi_min_ml = 0.5
+                      ! Lower limit applied to the NN phi_m and phi_h.
+
+LOGICAL :: l_nn_phi   ! True if phi_m and phi_h come from the NN.
+
+REAL(KIND=real_jlslsm) ::                                                      &
+ tl_1_ml(points), lw_down_ml(points), vshr_ml(points)                          &
+                      ! Tile-wise copies of gridbox inputs to the NN.
+,z_m_ml(points), z_h_ml(points)                                                &
+                      ! Heights passed to the NN (m).
+,phi_m_nn(points), phi_h_nn(points)                                            &
+                      ! NN stability functions.
+,phi_m_corr_nn(points), phi_h_corr_nn(points)                                  &
+                      ! NN corrections to the neutral values.
+,phi_m_corr_obs(points)
+                      ! NN correction to the neutral phi_m at the wind
+                      ! observation height.
 
 !  (b) Scalars.
 
@@ -170,6 +204,24 @@ CHARACTER(LEN=*), PARAMETER :: RoutineName='SFL_INT'
 
 !
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_in,zhook_handle)
+
+l_nn_phi = PRESENT(tl_1) .AND. PRESENT(lw_down) .AND. PRESENT(sw_surft)       &
+           .AND. PRESENT(tstar)
+
+IF (l_nn_phi) THEN
+  tl_1_ml(:)        = 0.0
+  lw_down_ml(:)     = 0.0
+  vshr_ml(:)        = 0.0
+  phi_m_corr_obs(:) = 0.0
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    j=(pts_index(l) - 1) / t_i_length + 1
+    i = pts_index(l) - (j-1) * t_i_length
+    tl_1_ml(l)    = tl_1(i,j)
+    lw_down_ml(l) = lw_down(i,j)
+    vshr_ml(l)    = vshr(i,j)
+  END DO
+END IF
 
 !-----------------------------------------------------------------------
 ! 0.1 If diagnostics required and array is present,
@@ -279,9 +331,53 @@ IF (sf_diag%su10 .OR. sf_diag%sv10 .OR. sf_diag%st1p5 .OR.                     &
     z_temp(i,j) = z_obs_tq + z0h(l) - z0m(l)
   END DO
 !$OMP END PARALLEL DO
-  CALL phi_m_h (points,surft_pts,surft_index,pts_index,                        &
-                recip_l_mo,z_wind,z_temp,z0m,z0h,                              &
-                phi_m_obs,phi_h_obs)
+  IF (l_nn_phi) THEN
+    ! The NN takes a single height, so it is evaluated at the wind
+    ! observation height for phi_m and at the screen height for phi_h, and
+    ! only where those are needed.
+    IF (sf_diag%su10 .OR. sf_diag%sv10 .OR. l_cdr10m_snow) THEN
+      z_m_ml(:) = 0.0
+      z_h_ml(:) = 0.0
+      DO k = 1,surft_pts
+        l = surft_index(k)
+        j=(pts_index(l) - 1) / t_i_length + 1
+        i = pts_index(l) - (j-1) * t_i_length
+        z_m_ml(l) = z_wind(i,j)
+        z_h_ml(l) = z_temp(i,j)
+      END DO
+      CALL phi_m_h_ml(points,surft_pts,surft_index,                            &
+                      tl_1_ml,lw_down_ml,sw_surft,z_m_ml,z_h_ml,tstar,vshr_ml, &
+                      z0m,z0h,phi_m_nn,phi_h_nn,phi_m_corr_nn,phi_h_corr_nn)
+      DO k = 1,surft_pts
+        l = surft_index(k)
+        phi_m_obs(l)      = MAX(phi_m_nn(l), phi_min_ml)
+        phi_m_corr_obs(l) = phi_m_corr_nn(l)
+      END DO
+    END IF
+    IF (sf_diag%st1p5 .OR. sf_diag%sq1p5 .OR.                                  &
+        (IScrnTDiag == IP_ScrnDecpl2) .OR. (IScrnTDiag == IP_ScrnDecpl3)) THEN
+      z_m_ml(:) = 0.0
+      z_h_ml(:) = 0.0
+      DO k = 1,surft_pts
+        l = surft_index(k)
+        j=(pts_index(l) - 1) / t_i_length + 1
+        i = pts_index(l) - (j-1) * t_i_length
+        z_m_ml(l) = z_obs_tq
+        z_h_ml(l) = z_temp(i,j)
+      END DO
+      CALL phi_m_h_ml(points,surft_pts,surft_index,                            &
+                      tl_1_ml,lw_down_ml,sw_surft,z_m_ml,z_h_ml,tstar,vshr_ml, &
+                      z0m,z0h,phi_m_nn,phi_h_nn,phi_m_corr_nn,phi_h_corr_nn)
+      DO k = 1,surft_pts
+        l = surft_index(k)
+        phi_h_obs(l) = MAX(phi_h_nn(l), phi_min_ml)
+      END DO
+    END IF
+  ELSE
+    CALL phi_m_h (points,surft_pts,surft_index,pts_index,                      &
+                  recip_l_mo,z_wind,z_temp,z0m,z0h,                            &
+                  phi_m_obs,phi_h_obs)
+  END IF
 END IF
 
 !-----------------------------------------------------------------------
@@ -369,9 +465,21 @@ IF ( sf_diag%su10 .OR. sf_diag%sv10 .OR. l_cdr10m_snow ) THEN
     END DO
 !$OMP END PARALLEL DO
 
-    CALL phi_m_h (points,surft_pts,surft_index,pts_index,                      &
-                  recip_l_mo,z_wind,z_temp,z0m_std,z0h,                        &
-                  phi_m_obs,phi_h_obs)
+    IF (l_nn_phi) THEN
+      ! Only the neutral part of the NN phi_m depends on the roughness
+      ! length, so reuse the NN correction at the wind observation height.
+      DO k = 1,surft_pts
+        l = surft_index(k)
+        j=(pts_index(l) - 1) / t_i_length + 1
+        i = pts_index(l) - (j-1) * t_i_length
+        phi_m_obs(l) = MAX(LOG( (z_wind(i,j) + z0m_std(l)) / z0m_std(l) )     &
+                           + phi_m_corr_obs(l), phi_min_ml)
+      END DO
+    ELSE
+      CALL phi_m_h (points,surft_pts,surft_index,pts_index,                    &
+                    recip_l_mo,z_wind,z_temp,z0m_std,z0h,                      &
+                    phi_m_obs,phi_h_obs)
+    END IF
 
 !$OMP PARALLEL DO IF(surft_pts > 1) SCHEDULE(STATIC) DEFAULT(NONE)             &
 !$OMP PRIVATE(k, l, j, i) SHARED(surft_pts, surft_index, pts_index,            &

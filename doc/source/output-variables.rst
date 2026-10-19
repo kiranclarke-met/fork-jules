@@ -1443,12 +1443,12 @@ functions. They are sampled from the main land-tile call to FCDCH in the explici
 only set on tile points that exist (other points are zero). Gridbox quantities are copied onto every tile
 so that all variables align with ``ml-phi_m``.
 
-The stability functions, momentum flux and friction velocities come from a separate ML flow that does not
-affect the rest of the model. The neural network gives :math:`\phi_m` and :math:`\phi_h` directly from
-the input features (``ml-lw_down``, ``ml-sw_surft``, ``ml-vshr``, ``ml-tl_1``, ``ml-tstar`` and
-``ml-z_uv``). These are limited to at least 0.5 and held fixed while the transfer coefficients and scaling
-velocities are iterated as in the standard scheme, using the buoyancy difference and roughness lengths from
-the standard calculation.
+On land, the neural network replaces the standard stability functions. It gives :math:`\phi_m` and
+:math:`\phi_h` directly from the input features (``ml-lw_down``, ``ml-sw_surft``, ``ml-vshr``,
+``ml-tl_1``, ``ml-tstar`` and ``ml-z_uv``), once per call to FCDCH. These are limited to at least 0.5 and
+held fixed while the transfer coefficients and scaling velocities are iterated. ``ml-phi_m``, ``ml-phi_h``
+and their corrections are the unclamped values; the momentum flux and friction velocities are the model
+values. Sea and sea-ice points use the standard stability functions.
 
 .. tabularcolumns:: |p{3.5cm}|p{9.8cm}|p{2.2cm}|
 
@@ -1467,11 +1467,11 @@ the standard calculation.
 | ``ml-phi_h_corr``       | Neural network correction :math:`\Delta\phi_h = \phi_h - \phi_{hn}`, where                              | nsurft     |
 |                         | :math:`\phi_{hn} = \ln((z_{tq} + z_{0m}) / z_{0h})` is the neutral value.                               |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-tau``              | Tile surface wind stress from the ML flow, :math:`\rho C_D` vshr\ :sup:`2` (N m\ :sup:`-2`).            | nsurft     |
+| ``ml-tau``              | Tile surface wind stress, :math:`\rho C_D` vshr\ :sup:`2` (N m\ :sup:`-2`).                             | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-ustar``            | Tile effective friction velocity, v_s, from the ML flow (m s\ :sup:`-1`).                               | nsurft     |
+| ``ml-ustar``            | Tile effective friction velocity, v_s (m s\ :sup:`-1`).                                                 | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-ustar_std``        | Tile standard friction velocity, v_s_std, excluding orographic form drag, from the ML flow              | nsurft     |
+| ``ml-ustar_std``        | Tile standard friction velocity, v_s_std, excluding orographic form drag                                | nsurft     |
 |                         | (m s\ :sup:`-1`).                                                                                       |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | ``ml-ustar_tau``        | Tile friction velocity derived from the ML momentum flux, SQRT(cd) * vshr (m s\ :sup:`-1`).             | nsurft     |

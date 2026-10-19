@@ -2210,6 +2210,8 @@ END IF
 
 DO n = 1,nsurft
   IF (l_vegdrag_surft(n)) THEN
+    PRINT *, 'JULES_LAND_SF_EXPLICIT: standard can_drag_phi_m_h called for ', &
+             'neutral CHN (RESFT), tile ', n
     CALL can_drag_phi_m_h(                                                     &
       land_pts, surft_pts(n), surft_index(:,n), land_index,                    &
       array_zero, z1_uv, z1_tq, canht_pft(:,n), lai_pft(:,n),                  &
@@ -2442,7 +2444,8 @@ IF ((l_dust .OR. l_dust_diag) .AND. l_aggregate) THEN
   ! are dummy variables not needed from this call
     cd_surft_soil(:,n),ch_surft_soil(:,n),cd_std_soil(:,n),                    &
     v_s_surft_soil(:,n),v_s_std_soil(:,n),recip_l_mo_surft_soil(:,n),          &
-    u_s_iter_soil(:,n)                                                         &
+    u_s_iter_soil(:,n),                                                        &
+    tl_1=tl_1, lw_down=lw_down, sw_surft=sw_surft(:,n)                         &
     )
 
 !$OMP PARALLEL IF(nsurft > 1) DEFAULT(NONE) PRIVATE(k, l, n)                   &
@@ -2509,7 +2512,8 @@ IF (l_aero_classic) THEN
       cd_surft_classic(:,n),ch_surft_classic(:,n),                             &
       cd_std_classic(:,n),v_s_surft_classic(:,n),                              &
       v_s_std_classic(:,n),recip_l_mo_surft_classic(:,n),                      &
-      u_s_iter_classic(:,n)                                                    &
+      u_s_iter_classic(:,n),                                                   &
+      tl_1=tl_1, lw_down=lw_down, sw_surft=sw_surft(:,n)                       &
       )
   END DO
 END IF
@@ -2543,10 +2547,10 @@ DO n = 1,nsurft
 END DO
 
 !-----------------------------------------------------------------------
-! ML stability-function diagnostics on land tiles. phi_m, phi_h, their
-! corrections, the momentum flux and friction velocities come from the
-! separate ML flow in the main call to fcdch, which does not affect the rest
-! of the model. The NN input features are as seen by that call.
+! ML stability-function diagnostics on land tiles, from the main call to
+! fcdch. phi_m, phi_h and their corrections are the unclamped neural network
+! values. The momentum flux and friction velocities are those of the model,
+! which uses the (clamped) neural network phi_m and phi_h.
 !-----------------------------------------------------------------------
 IF (sf_diag%l_ml_diags) THEN
   sf_diag%ml_phi_m(:,:)      = 0.0
@@ -2821,7 +2825,9 @@ IF (sf_diag%su10 .OR. sf_diag%sv10 .OR. sf_diag%sq1p5 .OR.                     &
      v_s_surft(:,n),v_s_std(:,n),                                              &
      z1_uv,z1_tq,db_surft(:,n),                                                &
      sf_diag,                                                                  &
-     cdr10m,sf_diag%cdr10m_n,sf_diag%cd10m_n,chr1p5m(:,n)                      &
+     cdr10m,sf_diag%cdr10m_n,sf_diag%cd10m_n,chr1p5m(:,n),                     &
+     tl_1=tl_1, lw_down=lw_down, sw_surft=sw_surft(:,n),                       &
+     tstar=tstar_surft(:,n)                                                    &
      )
   END DO
 
