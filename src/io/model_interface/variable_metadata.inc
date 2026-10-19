@@ -9374,9 +9374,9 @@ DATA metadata(724) / var_metadata(                                             &
 ! String identifier
     'ml-phi_m',                                                                &
 ! Variable type
-    var_type_surface,                                                          &
+    var_type_surft,                                                            &
 ! Long name
-    "ML: Gridbox mean of tile stability function for momentum (phi_m)",        &
+    "ML: Tile stability function for momentum (phi_m)",                        &
 ! Units
     ""                                                                         &
   ) /
@@ -9387,9 +9387,9 @@ DATA metadata(725) / var_metadata(                                             &
 ! String identifier
     'ml-phi_m_corr',                                                           &
 ! Variable type
-    var_type_surface,                                                          &
+    var_type_surft,                                                            &
 ! Long name
-    "ML: Gridbox mean of tile phi_m minus its neutral value (phi_m - phi_mn)", &
+    "ML: Tile phi_m minus its neutral value (phi_m - phi_mn)",                 &
 ! Units
     ""                                                                         &
   ) /
@@ -9465,9 +9465,9 @@ DATA metadata(731) / var_metadata(                                             &
 ! String identifier
     'ml-sw_surft',                                                             &
 ! Variable type
-    var_type_surface,                                                          &
+    var_type_surft,                                                            &
 ! Long name
-    "ML: Gridbox mean of tile net SW radiation",                               &
+    "ML: Tile net SW radiation",                                               &
 ! Units
     "W m-2"                                                                    &
   ) /
@@ -9504,9 +9504,9 @@ DATA metadata(734) / var_metadata(                                             &
 ! String identifier
     'ml-tstar',                                                                &
 ! Variable type
-    var_type_surface,                                                          &
+    var_type_surft,                                                            &
 ! Long name
-    "ML: Gridbox mean of tile surface temperature input to fcdch",             &
+    "ML: Tile surface temperature input to fcdch",                             &
 ! Units
     "K"                                                                        &
   ) /
@@ -9530,9 +9530,9 @@ DATA metadata(736) / var_metadata(                                             &
 ! String identifier
     'ml-phi_h',                                                                &
 ! Variable type
-    var_type_surface,                                                          &
+    var_type_surft,                                                            &
 ! Long name
-    "ML: Gridbox mean of tile stability function for heat (phi_h)",            &
+    "ML: Tile stability function for heat (phi_h)",                            &
 ! Units
     ""                                                                         &
   ) /
@@ -9543,9 +9543,9 @@ DATA metadata(737) / var_metadata(                                             &
 ! String identifier
     'ml-phi_h_corr',                                                           &
 ! Variable type
-    var_type_surface,                                                          &
+    var_type_surft,                                                            &
 ! Long name
-    "ML: Gridbox mean of tile phi_h minus its neutral value (phi_h - phi_hn)", &
+    "ML: Tile phi_h minus its neutral value (phi_h - phi_hn)",                 &
 ! Units
     ""                                                                         &
   ) /

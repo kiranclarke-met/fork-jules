@@ -2286,22 +2286,23 @@ CASE ( 'tau' )
   cube = map_from_land(cube_land)
 
   !-----------------------------------------------------------------------------
-  ! ML stability-function diagnostics (gridbox means over tiles)
+  ! ML stability-function diagnostics (tile-wise for phi, sw_surft and tstar,
+  ! gridbox means for the rest)
   !-----------------------------------------------------------------------------
 CASE ( 'ml-phi_m' )
-  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_phi_m, ainfo))
+  cube_land = cube_from_array(sf_diag%ml_phi_m)
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-phi_m_corr' )
-  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_phi_m_corr, ainfo))
+  cube_land = cube_from_array(sf_diag%ml_phi_m_corr)
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-phi_h' )
-  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_phi_h, ainfo))
+  cube_land = cube_from_array(sf_diag%ml_phi_h)
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-phi_h_corr' )
-  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_phi_h_corr, ainfo))
+  cube_land = cube_from_array(sf_diag%ml_phi_h_corr)
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-tau' )
@@ -2325,7 +2326,7 @@ CASE ( 'ml-lw_down' )
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-sw_surft' )
-  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_sw_surft, ainfo))
+  cube_land = cube_from_array(sf_diag%ml_sw_surft)
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-vshr' )
@@ -2333,11 +2334,11 @@ CASE ( 'ml-vshr' )
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-tl_1' )
-  cube_land = cube_from_array(sf_diag%ml_tl_1)
+  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_tl_1, ainfo))
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-tstar' )
-  cube_land = cube_from_array(surftiles_to_gbm(sf_diag%ml_tstar, ainfo))
+  cube_land = cube_from_array(sf_diag%ml_tstar)
   cube = map_from_land(cube_land)
 
 CASE ( 'ml-z_uv' )
