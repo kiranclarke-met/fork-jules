@@ -897,6 +897,12 @@ REAL(KIND=real_jlslsm) ::                                                      &
 ,phi_mn_ml_surft(land_pts,nsurft)                                              &
                              ! Neutral stability function for
                              ! momentum (ML diagnostic).
+,phi_h_ml_surft(land_pts,nsurft)                                               &
+                             ! Stability function for heat
+                             ! (ML diagnostic).
+,phi_hn_ml_surft(land_pts,nsurft)                                              &
+                             ! Neutral stability function for
+                             ! heat (ML diagnostic).
 ,z0m_soil(land_pts,nsurft)                                                     &
                              ! Bare soil momentum roughness length
                              ! for use in 1 tile dust scheme
@@ -2321,7 +2327,8 @@ DO n = 1,nsurft
     cd_surft(:,n),ch_surft(:,n),cd_std(:,n),                                   &
     v_s_surft(:,n),v_s_std(:,n),recip_l_mo_surft(:,n),                         &
     u_s_iter_surft(:,n),                                                       &
-    phi_m_out=phi_m_ml_surft(:,n),phi_mn_out=phi_mn_ml_surft(:,n)              &
+    phi_m_out=phi_m_ml_surft(:,n),phi_mn_out=phi_mn_ml_surft(:,n),             &
+    phi_h_out=phi_h_ml_surft(:,n),phi_hn_out=phi_hn_ml_surft(:,n)              &
     )
 END DO
 
@@ -2534,6 +2541,8 @@ END DO
 IF (sf_diag%l_ml_diags) THEN
   sf_diag%ml_phi_m(:,:)      = 0.0
   sf_diag%ml_phi_m_corr(:,:) = 0.0
+  sf_diag%ml_phi_h(:,:)      = 0.0
+  sf_diag%ml_phi_h_corr(:,:) = 0.0
   sf_diag%ml_tau(:,:)        = 0.0
   sf_diag%ml_ustar(:,:)      = 0.0
   sf_diag%ml_ustar_std(:,:)  = 0.0
@@ -2547,7 +2556,8 @@ IF (sf_diag%l_ml_diags) THEN
   DO n = 1,nsurft
 !$OMP PARALLEL DO IF(surft_pts(n) > 1) DEFAULT(NONE) SCHEDULE(STATIC)          &
 !$OMP SHARED( n, surft_pts, surft_index, land_index, t_i_length, sf_diag,      &
-!$OMP         phi_m_ml_surft, phi_mn_ml_surft, rhokm_1_surft, vshr_land,       &
+!$OMP         phi_m_ml_surft, phi_mn_ml_surft, phi_h_ml_surft,                 &
+!$OMP         phi_hn_ml_surft, rhokm_1_surft, vshr_land,                       &
 !$OMP         v_s_surft, u_s_std_surft, cd_surft, lw_down, sw_surft, tl_1,     &
 !$OMP         tstar_surft, z1_uv )                                             &
 !$OMP PRIVATE( i, j, k, l )
@@ -2557,6 +2567,8 @@ IF (sf_diag%l_ml_diags) THEN
       i = land_index(l) - (j-1) * t_i_length
       sf_diag%ml_phi_m(l,n)      = phi_m_ml_surft(l,n)
       sf_diag%ml_phi_m_corr(l,n) = phi_m_ml_surft(l,n) - phi_mn_ml_surft(l,n)
+      sf_diag%ml_phi_h(l,n)      = phi_h_ml_surft(l,n)
+      sf_diag%ml_phi_h_corr(l,n) = phi_h_ml_surft(l,n) - phi_hn_ml_surft(l,n)
       sf_diag%ml_tau(l,n)        = rhokm_1_surft(l,n) * vshr_land(i,j)
       sf_diag%ml_ustar(l,n)      = v_s_surft(l,n)
       sf_diag%ml_ustar_std(l,n)  = u_s_std_surft(l,n)

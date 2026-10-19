@@ -310,6 +310,8 @@ END IF
 IF ( sf_diag % l_ml_diags ) THEN
   ALLOCATE( sf_diag%ml_phi_m(land_pts,nsurft),                                 &
             sf_diag%ml_phi_m_corr(land_pts,nsurft),                            &
+            sf_diag%ml_phi_h(land_pts,nsurft),                                 &
+            sf_diag%ml_phi_h_corr(land_pts,nsurft),                            &
             sf_diag%ml_tau(land_pts,nsurft),                                   &
             sf_diag%ml_ustar(land_pts,nsurft),                                 &
             sf_diag%ml_ustar_std(land_pts,nsurft),                             &
@@ -323,6 +325,7 @@ IF ( sf_diag % l_ml_diags ) THEN
   error_sum = error_sum + ERROR
 ELSE
   ALLOCATE( sf_diag%ml_phi_m(1,1), sf_diag%ml_phi_m_corr(1,1),                 &
+            sf_diag%ml_phi_h(1,1), sf_diag%ml_phi_h_corr(1,1),                 &
             sf_diag%ml_tau(1,1), sf_diag%ml_ustar(1,1),                        &
             sf_diag%ml_ustar_std(1,1), sf_diag%ml_ustar_tau(1,1),              &
             sf_diag%ml_lw_down(1,1), sf_diag%ml_sw_surft(1,1),                 &
@@ -333,6 +336,8 @@ END IF
 IF ( error_sum == 0 ) THEN
   sf_diag%ml_phi_m(:,:)      = 0.0
   sf_diag%ml_phi_m_corr(:,:) = 0.0
+  sf_diag%ml_phi_h(:,:)      = 0.0
+  sf_diag%ml_phi_h_corr(:,:) = 0.0
   sf_diag%ml_tau(:,:)        = 0.0
   sf_diag%ml_ustar(:,:)      = 0.0
   sf_diag%ml_ustar_std(:,:)  = 0.0

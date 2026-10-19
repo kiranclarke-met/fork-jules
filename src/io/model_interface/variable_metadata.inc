@@ -9523,4 +9523,30 @@ DATA metadata(735) / var_metadata(                                             &
 ! Units
     "m"                                                                        &
   ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-phi_h
+!-----------------------------------------------------------------------------
+DATA metadata(736) / var_metadata(                                             &
+! String identifier
+    'ml-phi_h',                                                                &
+! Variable type
+    var_type_surface,                                                          &
+! Long name
+    "ML: Gridbox mean of tile stability function for heat (phi_h)",            &
+! Units
+    ""                                                                         &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-phi_h_corr
+!-----------------------------------------------------------------------------
+DATA metadata(737) / var_metadata(                                             &
+! String identifier
+    'ml-phi_h_corr',                                                           &
+! Variable type
+    var_type_surface,                                                          &
+! Long name
+    "ML: Gridbox mean of tile phi_h minus its neutral value (phi_h - phi_hn)", &
+! Units
+    ""                                                                         &
+  ) /
 #endif

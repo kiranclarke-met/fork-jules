@@ -240,6 +240,10 @@ TYPE :: strnewsfdiag
   !                             Stability function for momentum
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_m_corr(:,:)
   !                             phi_m minus its neutral value phi_mn
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_h(:,:)
+  !                             Stability function for heat
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_h_corr(:,:)
+  !                             phi_h minus its neutral value phi_hn
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_tau(:,:)
   !                             Tiled surface momentum flux (N/m2)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_ustar(:,:)
@@ -588,6 +592,8 @@ END IF
 ! ML diagnostics are standalone-only, so l_ml_diags is never set here.
 ALLOCATE(sf_diag%ml_phi_m(1,1))
 ALLOCATE(sf_diag%ml_phi_m_corr(1,1))
+ALLOCATE(sf_diag%ml_phi_h(1,1))
+ALLOCATE(sf_diag%ml_phi_h_corr(1,1))
 ALLOCATE(sf_diag%ml_tau(1,1))
 ALLOCATE(sf_diag%ml_ustar(1,1))
 ALLOCATE(sf_diag%ml_ustar_std(1,1))
@@ -622,6 +628,8 @@ DEALLOCATE(sf_diag%ml_ustar_tau)
 DEALLOCATE(sf_diag%ml_ustar_std)
 DEALLOCATE(sf_diag%ml_ustar)
 DEALLOCATE(sf_diag%ml_tau)
+DEALLOCATE(sf_diag%ml_phi_h_corr)
+DEALLOCATE(sf_diag%ml_phi_h)
 DEALLOCATE(sf_diag%ml_phi_m_corr)
 DEALLOCATE(sf_diag%ml_phi_m)
 DEALLOCATE(sf_diag%tau_surft)

@@ -39,7 +39,7 @@ SUBROUTINE fcdch (                                                             &
  anthrop_heat,scaling_urban,alpha1,hcons,ashtf,                                &
  rhostar,bq_1,bt_1,                                                            &
  cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,                               &
- phi_m_out,phi_mn_out                                                          &
+ phi_m_out,phi_mn_out,phi_h_out,phi_hn_out                                     &
 )
 
 USE atm_fields_bounds_mod, ONLY: tdims
@@ -244,9 +244,15 @@ REAL(KIND=real_jlslsm), INTENT(OUT), OPTIONAL ::                               &
  phi_m_out(points)                                                             &
 !                    ! OUT Final stability function for momentum, consistent
 !                    !     with the returned cdv (ML diagnostic).
-,phi_mn_out(points)
+,phi_mn_out(points)                                                            &
 !                    ! OUT Neutral (1/L = 0) value of the stability
 !                    !     function for momentum (ML diagnostic).
+,phi_h_out(points)                                                             &
+!                    ! OUT Final stability function for heat, consistent
+!                    !     with the returned chv (ML diagnostic).
+,phi_hn_out(points)
+!                    ! OUT Neutral (1/L = 0) value of the stability
+!                    !     function for heat (ML diagnostic).
 
 !    Workspace usage----------------------------------------------------
 
@@ -284,6 +290,8 @@ REAL(KIND=real_jlslsm) ::                                                      &
                      ! Previous value of recip_l_mo
 ,phi_m_old(points)                                                             &
                      ! Previous value of phi_m
+,phi_h_old(points)                                                             &
+                     ! Previous value of phi_h
 ,db_old(points)                                                                &
                      ! Previous value of db
 ,db_older(points)                                                              &
@@ -656,7 +664,7 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old,                 &
 !$OMP        v_s, v_s_old, v_s_std, v_s_std_old,                               &
 !$OMP        u_s_std, u_s_std_old, recip_l_mo, recip_l_mo_old,                 &
-!$OMP        phi_m, phi_m_old,                                                 &
+!$OMP        phi_m, phi_m_old, phi_h, phi_h_old,                               &
 !$OMP        db_diff_old, db_diff, db_old, db_older, indexi, indexj) SCHEDULE(STATIC)
       DO k = 1,surft_pts
         l = surft_index(k)
@@ -707,6 +715,7 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
         u_s_std_old(l)    = u_s_std(l)
         recip_l_mo_old(l) = recip_l_mo(l)
         phi_m_old(l)      = phi_m(l)
+        phi_h_old(l)      = phi_h(l)
 
       END DO
 !$OMP END PARALLEL DO
@@ -1079,7 +1088,7 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old,                 &
 !$OMP        v_s, v_s_old, v_s_std, v_s_std_old,                               &
 !$OMP        u_s_std, u_s_std_old, recip_l_mo, recip_l_mo_old,                 &
-!$OMP        phi_m, phi_m_old,                                                 &
+!$OMP        phi_m, phi_m_old, phi_h, phi_h_old,                               &
 !$OMP        db_diff_old, db_diff, db_old, db_older, indexi, indexj) SCHEDULE(STATIC)
       DO k = 1,surft_pts
         l = surft_index(k)
@@ -1130,6 +1139,7 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
         u_s_std_old(l)    = u_s_std(l)
         recip_l_mo_old(l) = recip_l_mo(l)
         phi_m_old(l)      = phi_m(l)
+        phi_h_old(l)      = phi_h(l)
 
       END DO
 !$OMP END PARALLEL DO
@@ -1293,7 +1303,8 @@ IF (l_mo_buoyancy_calc) THEN
 !$OMP SHARED(surft_pts, surft_index, pts_index, t_i_length, db, db_older,      &
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old, v_s, v_s_old,   &
 !$OMP        v_s_std, v_s_std_old, u_s_std, u_s_std_old, recip_l_mo,           &
-!$OMP        recip_l_mo_old, phi_m, phi_m_old, tolerance) SCHEDULE(STATIC)
+!$OMP        recip_l_mo_old, phi_m, phi_m_old, phi_h, phi_h_old, tolerance)    &
+!$OMP SCHEDULE(STATIC)
   DO k = 1,surft_pts
     l = surft_index(k)
 
@@ -1311,16 +1322,18 @@ IF (l_mo_buoyancy_calc) THEN
       u_s_std(l)    = u_s_std_old(l)
       recip_l_mo(l) = recip_l_mo_old(l)
       phi_m(l)      = phi_m_old(l)
+      phi_h(l)      = phi_h_old(l)
     END IF
   END DO
 !$OMP END PARALLEL DO
 END IF
 
 !-----------------------------------------------------------------------
-! ML diagnostics: final phi_m and its neutral value (1/L = 0), evaluated
-! with the same stability routine and roughness lengths as phi_m.
+! ML diagnostics: final phi_m and phi_h and their neutral values (1/L = 0),
+! evaluated with the same stability routine and roughness lengths.
 !-----------------------------------------------------------------------
-IF (PRESENT(phi_m_out) .OR. PRESENT(phi_mn_out)) THEN
+IF (PRESENT(phi_m_out) .OR. PRESENT(phi_mn_out) .OR.                           &
+    PRESENT(phi_h_out) .OR. PRESENT(phi_hn_out)) THEN
   ALLOCATE(recip_l_mo_neutral(points), phi_mn_tmp(points), phi_hn_tmp(points))
   recip_l_mo_neutral(:) = 0.0
   phi_mn_tmp(:)         = 0.0
@@ -1362,6 +1375,20 @@ IF (PRESENT(phi_m_out) .OR. PRESENT(phi_mn_out)) THEN
     DO k = 1,surft_pts
       l = surft_index(k)
       phi_mn_out(l) = phi_mn_tmp(l)
+    END DO
+  END IF
+  IF (PRESENT(phi_h_out)) THEN
+    phi_h_out(:) = 0.0
+    DO k = 1,surft_pts
+      l = surft_index(k)
+      phi_h_out(l) = phi_h(l)
+    END DO
+  END IF
+  IF (PRESENT(phi_hn_out)) THEN
+    phi_hn_out(:) = 0.0
+    DO k = 1,surft_pts
+      l = surft_index(k)
+      phi_hn_out(l) = phi_hn_tmp(l)
     END DO
   END IF
 

@@ -1453,6 +1453,11 @@ are tile-fraction-weighted means. Gridbox quantities are unchanged by the averag
 | ``ml-phi_m_corr``       | Tile stability correction :math:`\phi_m - \phi_{mn}`, where :math:`\phi_{mn}` is the neutral (1/L = 0)  | land       |
 |                         | value.                                                                                                  |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
+| ``ml-phi_h``            | Tile stability function for heat, :math:`\phi_h`, from the main land-tile call to FCDCH.                | land       |
++-------------------------+---------------------------------------------------------------------------------------------------------+------------+
+| ``ml-phi_h_corr``       | Tile stability correction :math:`\phi_h - \phi_{hn}`, where :math:`\phi_{hn}` is the neutral (1/L = 0)  | land       |
+|                         | value.                                                                                                  |            |
++-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | ``ml-tau``              | Tile surface wind stress for land tiles (N m\ :sup:`-2`). Same as ``tau``.                              | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | ``ml-ustar``            | Tile effective friction velocity, v_s, from the Monin-Obukhov iteration (m s\ :sup:`-1`).               | land       |
@@ -1471,7 +1476,7 @@ are tile-fraction-weighted means. Gridbox quantities are unchanged by the averag
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | ``ml-tstar``            | Tile surface temperature as used in FCDCH, i.e. at the start of the timestep (K).                       | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-z_uv``             | Height of the lowest wind level copied (m).                                              | land       |
+| ``ml-z_uv``             | Height of the lowest wind level (m).                                                                    | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 
 Grid and indexing variables
