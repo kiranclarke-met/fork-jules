@@ -1440,8 +1440,9 @@ ML stability-function diagnostics
 
 These diagnostics are for training and evaluating a machine-learning replacement of the surface stability
 functions. They are sampled from the main land-tile call to FCDCH in the explicit surface exchange, and are
-only set on tile points that exist (other points are zero). Gridbox quantities are copied onto every tile
-so that all variables align with ``ml-phi_m``.
+only set on tile points that exist (other points are zero). ``ml-phi_m``, ``ml-phi_m_corr``, ``ml-phi_h``, ``ml-phi_h_corr``, ``ml-sw_surft`` and ``ml-tstar`` are
+tile-wise (``nsurft``). The remaining variables are gridbox means (tile values weighted by tile fraction,
+as for ``tstar_gb``).
 
 On land, the neural network replaces the standard stability functions. It gives :math:`\phi_m` and
 :math:`\phi_h` directly from the input features (``ml-lw_down``, ``ml-sw_surft``, ``ml-vshr``,
@@ -1467,26 +1468,26 @@ values. Sea and sea-ice points use the standard stability functions.
 | ``ml-phi_h_corr``       | Neural network correction :math:`\Delta\phi_h = \phi_h - \phi_{hn}`, where                              | nsurft     |
 |                         | :math:`\phi_{hn} = \ln((z_{tq} + z_{0m}) / z_{0h})` is the neutral value.                               |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-tau``              | Tile surface wind stress, :math:`\rho C_D` vshr\ :sup:`2` (N m\ :sup:`-2`).                             | nsurft     |
+| ``ml-tau``              | Gridbox mean surface wind stress, :math:`\rho C_D` vshr\ :sup:`2` (N m\ :sup:`-2`).                     | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-ustar``            | Tile effective friction velocity, v_s (m s\ :sup:`-1`).                                                 | nsurft     |
+| ``ml-ustar``            | Gridbox mean effective friction velocity, v_s (m s\ :sup:`-1`).                                         | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-ustar_std``        | Tile standard friction velocity, v_s_std, excluding orographic form drag                                | nsurft     |
+| ``ml-ustar_std``        | Gridbox mean standard friction velocity, v_s_std, excluding orographic form drag                        | land       |
 |                         | (m s\ :sup:`-1`).                                                                                       |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-ustar_tau``        | Tile friction velocity derived from the ML momentum flux, SQRT(cd) * vshr (m s\ :sup:`-1`).             | nsurft     |
+| ``ml-ustar_tau``        | Gridbox mean friction velocity derived from the ML momentum flux, SQRT(cd) * vshr (m s\ :sup:`-1`).     | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-lw_down``          | Gridbox surface downward LW radiation copied onto each tile (W m\ :sup:`-2`).                           | nsurft     |
+| ``ml-lw_down``          | Gridbox surface downward LW radiation (W m\ :sup:`-2`).                                                 | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | ``ml-sw_surft``         | Tile net SW radiation (W m\ :sup:`-2`).                                                                 | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-vshr``             | Gridbox land wind shear (surface to lowest wind level) copied onto each tile (m s\ :sup:`-1`).          | nsurft     |
+| ``ml-vshr``             | Gridbox land wind shear (surface to lowest wind level) (m s\ :sup:`-1`).                                | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-tl_1``             | Gridbox lowest level liquid/frozen water temperature copied onto each tile (K).                         | nsurft     |
+| ``ml-tl_1``             | Gridbox lowest level liquid/frozen water temperature (K).                                               | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | ``ml-tstar``            | Tile surface temperature as used in FCDCH, i.e. at the start of the timestep (K).                       | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-z_uv``             | Height of the lowest wind level copied onto each tile (m).                                              | nsurft     |
+| ``ml-z_uv``             | Gridbox mean height of the lowest wind level (m).                                                       | land       |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 
 Grid and indexing variables

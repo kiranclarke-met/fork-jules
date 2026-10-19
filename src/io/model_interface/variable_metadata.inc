@@ -9400,9 +9400,9 @@ DATA metadata(726) / var_metadata(                                             &
 ! String identifier
     'ml-tau',                                                                  &
 ! Variable type
-    var_type_surft,                                                            &
+    var_type_surface,                                                          &
 ! Long name
-    "ML: Tile surface momentum flux from NN phi",                              &
+    "ML: Gridbox mean of tile surface momentum flux from NN phi",              &
 ! Units
     "N m-2"                                                                    &
   ) /
@@ -9413,9 +9413,9 @@ DATA metadata(727) / var_metadata(                                             &
 ! String identifier
     'ml-ustar',                                                                &
 ! Variable type
-    var_type_surft,                                                            &
+    var_type_surface,                                                          &
 ! Long name
-    "ML: Tile effective friction velocity (v_s) from NN phi",                  &
+    "ML: Gridbox mean tile effective friction velocity (v_s), NN phi",         &
 ! Units
     "m s-1"                                                                    &
   ) /
@@ -9426,9 +9426,9 @@ DATA metadata(728) / var_metadata(                                             &
 ! String identifier
     'ml-ustar_std',                                                            &
 ! Variable type
-    var_type_surft,                                                            &
+    var_type_surface,                                                          &
 ! Long name
-    "ML: Tile standard friction velocity (v_s_std) from NN phi",               &
+    "ML: Gridbox mean tile standard friction velocity, NN phi",                &
 ! Units
     "m s-1"                                                                    &
   ) /
@@ -9439,9 +9439,9 @@ DATA metadata(729) / var_metadata(                                             &
 ! String identifier
     'ml-ustar_tau',                                                            &
 ! Variable type
-    var_type_surft,                                                            &
+    var_type_surface,                                                          &
 ! Long name
-    "ML: Tile friction velocity SQRT(cd)*vshr from NN phi",                    &
+    "ML: Gridbox mean tile friction velocity SQRT(cd)*vshr, NN phi",           &
 ! Units
     "m s-1"                                                                    &
   ) /
@@ -9452,9 +9452,9 @@ DATA metadata(730) / var_metadata(                                             &
 ! String identifier
     'ml-lw_down',                                                              &
 ! Variable type
-    var_type_surft,                                                            &
+    var_type_surface,                                                          &
 ! Long name
-    "ML: Downward LW radiation copied onto tiles",                             &
+    "ML: Gridbox mean downward LW radiation",                                  &
 ! Units
     "W m-2"                                                                    &
   ) /
@@ -9478,9 +9478,9 @@ DATA metadata(732) / var_metadata(                                             &
 ! String identifier
     'ml-vshr',                                                                 &
 ! Variable type
-    var_type_surft,                                                            &
+    var_type_surface,                                                          &
 ! Long name
-    "ML: Land wind shear copied onto tiles",                                   &
+    "ML: Gridbox mean land wind shear",                                        &
 ! Units
     "m s-1"                                                                    &
   ) /
@@ -9491,9 +9491,9 @@ DATA metadata(733) / var_metadata(                                             &
 ! String identifier
     'ml-tl_1',                                                                 &
 ! Variable type
-    var_type_surft,                                                            &
+    var_type_surface,                                                          &
 ! Long name
-    "ML: Lowest level liquid water temperature on tiles",                      &
+    "ML: Gridbox mean lowest level liquid water temperature",                  &
 ! Units
     "K"                                                                        &
   ) /
@@ -9517,9 +9517,9 @@ DATA metadata(735) / var_metadata(                                             &
 ! String identifier
     'ml-z_uv',                                                                 &
 ! Variable type
-    var_type_surft,                                                            &
+    var_type_surface,                                                          &
 ! Long name
-    "ML: Height of lowest wind level copied onto tiles",                       &
+    "ML: Gridbox mean height of lowest wind level",                            &
 ! Units
     "m"                                                                        &
   ) /
