@@ -892,11 +892,21 @@ REAL(KIND=real_jlslsm) ::                                                      &
                              ! Reciprocal of the Monin-Obukhov
                              ! length for tiles (m^-1).
 ,phi_m_ml_surft(land_pts,nsurft)                                               &
-                             ! Stability function for momentum
-                             ! (ML diagnostic).
-,phi_mn_ml_surft(land_pts,nsurft)                                              &
-                             ! Neutral stability function for
-                             ! momentum (ML diagnostic).
+                             ! ML stability function for momentum.
+,phi_h_ml_surft(land_pts,nsurft)                                               &
+                             ! ML stability function for heat.
+,phi_m_corr_ml_surft(land_pts,nsurft)                                          &
+                             ! ML correction to neutral phi_m.
+,phi_h_corr_ml_surft(land_pts,nsurft)                                          &
+                             ! ML correction to neutral phi_h.
+,cd_ml_surft(land_pts,nsurft)                                                  &
+                             ! ML-derived drag coefficient.
+,v_s_ml_surft(land_pts,nsurft)                                                 &
+                             ! ML-derived surface layer scaling
+                             ! velocity (m/s).
+,v_s_std_ml_surft(land_pts,nsurft)                                             &
+                             ! ML-derived surface layer scaling
+                             ! velocity excluding form drag (m/s).
 ,z0m_soil(land_pts,nsurft)                                                     &
                              ! Bare soil momentum roughness length
                              ! for use in 1 tile dust scheme
@@ -2321,8 +2331,13 @@ DO n = 1,nsurft
     cd_surft(:,n),ch_surft(:,n),cd_std(:,n),                                   &
     v_s_surft(:,n),v_s_std(:,n),recip_l_mo_surft(:,n),                         &
     u_s_iter_surft(:,n),                                                       &
-    tl_1,lw_down,sw_surft(:,n),                                                &
-    phi_m_out=phi_m_ml_surft(:,n),phi_mn_out=phi_mn_ml_surft(:,n)              &
+    tl_1=tl_1, lw_down=lw_down, sw_surft=sw_surft(:,n),                        &
+    l_ml_flow=sf_diag%l_ml_diags,                                              &
+    phi_m_ml_out=phi_m_ml_surft(:,n), phi_h_ml_out=phi_h_ml_surft(:,n),        &
+    phi_m_corr_ml_out=phi_m_corr_ml_surft(:,n),                                &
+    phi_h_corr_ml_out=phi_h_corr_ml_surft(:,n),                                &
+    cd_ml_out=cd_ml_surft(:,n), v_s_ml_out=v_s_ml_surft(:,n),                  &
+    v_s_std_ml_out=v_s_std_ml_surft(:,n)                                       &
     )
 END DO
 
@@ -2427,8 +2442,7 @@ IF ((l_dust .OR. l_dust_diag) .AND. l_aggregate) THEN
   ! are dummy variables not needed from this call
     cd_surft_soil(:,n),ch_surft_soil(:,n),cd_std_soil(:,n),                    &
     v_s_surft_soil(:,n),v_s_std_soil(:,n),recip_l_mo_surft_soil(:,n),          &
-    u_s_iter_soil(:,n),                                                        &
-    tl_1,lw_down,sw_surft(:,n)                                                &
+    u_s_iter_soil(:,n)                                                         &
     )
 
 !$OMP PARALLEL IF(nsurft > 1) DEFAULT(NONE) PRIVATE(k, l, n)                   &
@@ -2495,8 +2509,7 @@ IF (l_aero_classic) THEN
       cd_surft_classic(:,n),ch_surft_classic(:,n),                             &
       cd_std_classic(:,n),v_s_surft_classic(:,n),                              &
       v_s_std_classic(:,n),recip_l_mo_surft_classic(:,n),                      &
-      u_s_iter_classic(:,n),                                                   &
-      tl_1,lw_down,sw_surft(:,n)                                              &
+      u_s_iter_classic(:,n)                                                    &
       )
   END DO
 END IF
@@ -2530,13 +2543,16 @@ DO n = 1,nsurft
 END DO
 
 !-----------------------------------------------------------------------
-! ML stability-function diagnostics: target (phi_m), its departure from
-! neutral, momentum flux, friction velocities and the NN input features,
-! all on land tiles as seen by the main call to fcdch.
+! ML stability-function diagnostics on land tiles. phi_m, phi_h, their
+! corrections, the momentum flux and friction velocities come from the
+! separate ML flow in the main call to fcdch, which does not affect the rest
+! of the model. The NN input features are as seen by that call.
 !-----------------------------------------------------------------------
 IF (sf_diag%l_ml_diags) THEN
   sf_diag%ml_phi_m(:,:)      = 0.0
   sf_diag%ml_phi_m_corr(:,:) = 0.0
+  sf_diag%ml_phi_h(:,:)      = 0.0
+  sf_diag%ml_phi_h_corr(:,:) = 0.0
   sf_diag%ml_tau(:,:)        = 0.0
   sf_diag%ml_ustar(:,:)      = 0.0
   sf_diag%ml_ustar_std(:,:)  = 0.0
@@ -2550,20 +2566,24 @@ IF (sf_diag%l_ml_diags) THEN
   DO n = 1,nsurft
 !$OMP PARALLEL DO IF(surft_pts(n) > 1) DEFAULT(NONE) SCHEDULE(STATIC)          &
 !$OMP SHARED( n, surft_pts, surft_index, land_index, t_i_length, sf_diag,      &
-!$OMP         phi_m_ml_surft, phi_mn_ml_surft, rhokm_1_surft, vshr_land,       &
-!$OMP         v_s_surft, u_s_std_surft, cd_surft, lw_down, sw_surft, tl_1,     &
-!$OMP         tstar_surft, z1_uv )                                             &
+!$OMP         phi_m_ml_surft, phi_h_ml_surft, phi_m_corr_ml_surft,             &
+!$OMP         phi_h_corr_ml_surft, cd_ml_surft, v_s_ml_surft,                  &
+!$OMP         v_s_std_ml_surft, rhostar_mom, vshr_land, lw_down, sw_surft,     &
+!$OMP         tl_1, tstar_surft, z1_uv )                                       &
 !$OMP PRIVATE( i, j, k, l )
     DO k = 1,surft_pts(n)
       l = surft_index(k,n)
       j = (land_index(l) - 1) / t_i_length + 1
       i = land_index(l) - (j-1) * t_i_length
       sf_diag%ml_phi_m(l,n)      = phi_m_ml_surft(l,n)
-      sf_diag%ml_phi_m_corr(l,n) = phi_m_ml_surft(l,n) - phi_mn_ml_surft(l,n)
-      sf_diag%ml_tau(l,n)        = rhokm_1_surft(l,n) * vshr_land(i,j)
-      sf_diag%ml_ustar(l,n)      = v_s_surft(l,n)
-      sf_diag%ml_ustar_std(l,n)  = u_s_std_surft(l,n)
-      sf_diag%ml_ustar_tau(l,n)  = SQRT(cd_surft(l,n)) * vshr_land(i,j)
+      sf_diag%ml_phi_m_corr(l,n) = phi_m_corr_ml_surft(l,n)
+      sf_diag%ml_phi_h(l,n)      = phi_h_ml_surft(l,n)
+      sf_diag%ml_phi_h_corr(l,n) = phi_h_corr_ml_surft(l,n)
+      sf_diag%ml_tau(l,n)        = rhostar_mom(i,j) * cd_ml_surft(l,n) *       &
+                                   vshr_land(i,j) * vshr_land(i,j)
+      sf_diag%ml_ustar(l,n)      = v_s_ml_surft(l,n)
+      sf_diag%ml_ustar_std(l,n)  = v_s_std_ml_surft(l,n)
+      sf_diag%ml_ustar_tau(l,n)  = SQRT(cd_ml_surft(l,n)) * vshr_land(i,j)
       sf_diag%ml_lw_down(l,n)    = lw_down(i,j)
       sf_diag%ml_sw_surft(l,n)   = sw_surft(l,n)
       sf_diag%ml_vshr(l,n)       = vshr_land(i,j)

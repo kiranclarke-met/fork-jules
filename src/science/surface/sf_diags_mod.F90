@@ -236,14 +236,20 @@ TYPE :: strnewsfdiag
 
   ! ML stability-function diagnostics (land_pts,nsurft), sampled at the
   ! main land-tile call to fcdch. Gridbox inputs are copied onto each tile.
+  ! phi, corrections, tau and friction velocities are from the separate ML
+  ! flow, which uses the neural network phi_m and phi_h.
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_m(:,:)
-  !                             Stability function for momentum
+  !                             ML stability function for momentum
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_m_corr(:,:)
-  !                             phi_m minus its neutral value phi_mn
+  !                             ML correction to neutral phi_m
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_h(:,:)
+  !                             ML stability function for heat
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_phi_h_corr(:,:)
+  !                             ML correction to neutral phi_h
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_tau(:,:)
-  !                             Tiled surface momentum flux (N/m2)
+  !                             ML tiled surface momentum flux (N/m2)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_ustar(:,:)
-  !                             Effective friction velocity v_s (m/s)
+  !                             ML effective friction velocity v_s (m/s)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_ustar_std(:,:)
   !                             Standard friction velocity u_s_std (m/s)
   REAL(KIND=real_jlslsm), ALLOCATABLE :: ml_ustar_tau(:,:)
@@ -588,6 +594,8 @@ END IF
 ! ML diagnostics are standalone-only, so l_ml_diags is never set here.
 ALLOCATE(sf_diag%ml_phi_m(1,1))
 ALLOCATE(sf_diag%ml_phi_m_corr(1,1))
+ALLOCATE(sf_diag%ml_phi_h(1,1))
+ALLOCATE(sf_diag%ml_phi_h_corr(1,1))
 ALLOCATE(sf_diag%ml_tau(1,1))
 ALLOCATE(sf_diag%ml_ustar(1,1))
 ALLOCATE(sf_diag%ml_ustar_std(1,1))
@@ -622,6 +630,8 @@ DEALLOCATE(sf_diag%ml_ustar_tau)
 DEALLOCATE(sf_diag%ml_ustar_std)
 DEALLOCATE(sf_diag%ml_ustar)
 DEALLOCATE(sf_diag%ml_tau)
+DEALLOCATE(sf_diag%ml_phi_h_corr)
+DEALLOCATE(sf_diag%ml_phi_h)
 DEALLOCATE(sf_diag%ml_phi_m_corr)
 DEALLOCATE(sf_diag%ml_phi_m)
 DEALLOCATE(sf_diag%tau_surft)

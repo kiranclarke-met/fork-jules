@@ -1438,28 +1438,43 @@ IMOGEN
 ML stability-function diagnostics
 ---------------------------------
 
-These diagnostics are for training a machine-learning replacement of the surface stability functions.
-They are sampled from the main land-tile call to FCDCH in the explicit surface exchange, and are only
-set on tile points that exist (other points are zero). Gridbox quantities are copied onto every tile so
-that all variables align with ``ml-phi_m``.
+These diagnostics are for training and evaluating a machine-learning replacement of the surface stability
+functions. They are sampled from the main land-tile call to FCDCH in the explicit surface exchange, and are
+only set on tile points that exist (other points are zero). Gridbox quantities are copied onto every tile
+so that all variables align with ``ml-phi_m``.
+
+The stability functions, momentum flux and friction velocities come from a separate ML flow that does not
+affect the rest of the model. The neural network gives :math:`\phi_m` and :math:`\phi_h` directly from
+the input features (``ml-lw_down``, ``ml-sw_surft``, ``ml-vshr``, ``ml-tl_1``, ``ml-tstar`` and
+``ml-z_uv``). These are limited to at least 0.5 and held fixed while the transfer coefficients and scaling
+velocities are iterated as in the standard scheme, using the buoyancy difference and roughness lengths from
+the standard calculation.
 
 .. tabularcolumns:: |p{3.5cm}|p{9.8cm}|p{2.2cm}|
 
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | Name                    | Description                                                                                             | Dimensions |
 +=========================+=========================================================================================================+============+
-| ``ml-phi_m``            | Tile stability function for momentum, :math:`\phi_m`, from the main land-tile call to FCDCH.            | nsurft     |
+| ``ml-phi_m``            | Tile stability function for momentum from the neural network,                                           | nsurft     |
+|                         | :math:`\phi_m = \phi_{mn} + \Delta\phi_m` (unclamped, so may be zero or negative).                      |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-phi_m_corr``       | Tile stability correction :math:`\phi_m - \phi_{mn}`, where :math:`\phi_{mn}` is the neutral (1/L = 0)  | nsurft     |
-|                         | value.                                                                                                  |            |
+| ``ml-phi_m_corr``       | Neural network correction :math:`\Delta\phi_m = \phi_m - \phi_{mn}`, where                              | nsurft     |
+|                         | :math:`\phi_{mn} = \ln((z_{uv} + z_{0m}) / z_{0m})` is the neutral value.                               |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-tau``              | Tile surface wind stress for land tiles (N m\ :sup:`-2`). Same as ``tau``.                              | nsurft     |
+| ``ml-phi_h``            | Tile stability function for heat from the neural network,                                               | nsurft     |
+|                         | :math:`\phi_h = \phi_{hn} + \Delta\phi_h` (unclamped, so may be zero or negative).                      |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-ustar``            | Tile effective friction velocity, v_s, from the Monin-Obukhov iteration (m s\ :sup:`-1`).               | nsurft     |
+| ``ml-phi_h_corr``       | Neural network correction :math:`\Delta\phi_h = \phi_h - \phi_{hn}`, where                              | nsurft     |
+|                         | :math:`\phi_{hn} = \ln((z_{tq} + z_{0m}) / z_{0h})` is the neutral value.                               |            |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-ustar_std``        | Tile standard friction velocity, u_s_std, excluding orographic form drag (m s\ :sup:`-1`).              | nsurft     |
+| ``ml-tau``              | Tile surface wind stress from the ML flow, :math:`\rho C_D` vshr\ :sup:`2` (N m\ :sup:`-2`).            | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
-| ``ml-ustar_tau``        | Tile friction velocity derived from the momentum flux, SQRT(cd) * vshr (m s\ :sup:`-1`).                | nsurft     |
+| ``ml-ustar``            | Tile effective friction velocity, v_s, from the ML flow (m s\ :sup:`-1`).                               | nsurft     |
++-------------------------+---------------------------------------------------------------------------------------------------------+------------+
+| ``ml-ustar_std``        | Tile standard friction velocity, v_s_std, excluding orographic form drag, from the ML flow              | nsurft     |
+|                         | (m s\ :sup:`-1`).                                                                                       |            |
++-------------------------+---------------------------------------------------------------------------------------------------------+------------+
+| ``ml-ustar_tau``        | Tile friction velocity derived from the ML momentum flux, SQRT(cd) * vshr (m s\ :sup:`-1`).             | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+
 | ``ml-lw_down``          | Gridbox surface downward LW radiation copied onto each tile (W m\ :sup:`-2`).                           | nsurft     |
 +-------------------------+---------------------------------------------------------------------------------------------------------+------------+

@@ -40,8 +40,9 @@ SUBROUTINE fcdch (                                                             &
  anthrop_heat,scaling_urban,alpha1,hcons,ashtf,                                &
  rhostar,bq_1,bt_1,                                                            &
  cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,                               &
- tl_1,lw_down,sw_surft,                                                        &
- phi_m_out,phi_mn_out                                                          &
+ tl_1,lw_down,sw_surft,l_ml_flow,                                              &
+ phi_m_ml_out,phi_h_ml_out,phi_m_corr_ml_out,phi_h_corr_ml_out,                &
+ cd_ml_out,v_s_ml_out,v_s_std_ml_out                                           &
 )
 
 USE atm_fields_bounds_mod, ONLY: tdims
@@ -242,21 +243,40 @@ REAL(KIND=real_jlslsm) ::                                                      &
 !                    ! OUT Reciprocal of the Monin-Obukhov length
 !                    !     (m^-1).
 
-REAL(KIND=real_jlslsm), INTENT(IN), OPTIONAL ::                               &
- tl_1(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                    &
-                      ! IN Air temperature at lowest model level (K).
-,lw_down(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                 &
-                      ! IN Downward longwave radiation (W/m2).
+! Optional arguments for the ML stability-function diagnostic flow. They are
+! only used when l_ml_flow is present and true, in which case all of them must
+! be present. None of them affect the standard outputs above.
+LOGICAL, INTENT(IN), OPTIONAL ::                                               &
+ l_ml_flow
+!                    ! IN Switch to run the ML diagnostic flow.
+
+REAL(KIND=real_jlslsm), INTENT(IN), OPTIONAL ::                                &
+ tl_1(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                     &
+!                    ! IN Liquid/frozen water temperature for lowest
+!                    !    atmospheric layer (K).
+,lw_down(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)                  &
+!                    ! IN Surface downward LW radiation (W/m2).
 ,sw_surft(points)
-                      ! IN Surface shortwave forcing on tiles (W/m2).
+!                    ! IN Net SW radiation on tiles (W/m2).
 
 REAL(KIND=real_jlslsm), INTENT(OUT), OPTIONAL ::                               &
- phi_m_out(points)                                                             &
-!                    ! OUT Final stability function for momentum, consistent
-!                    !     with the returned cdv (ML diagnostic).
-,phi_mn_out(points)
-!                    ! OUT Neutral (1/L = 0) value of the stability
-!                    !     function for momentum (ML diagnostic).
+ phi_m_ml_out(points)                                                          &
+!                    ! OUT ML stability function for momentum (unclamped).
+,phi_h_ml_out(points)                                                          &
+!                    ! OUT ML stability function for heat (unclamped).
+,phi_m_corr_ml_out(points)                                                     &
+!                    ! OUT ML correction to neutral phi_m (phi_m - phi_mn).
+,phi_h_corr_ml_out(points)                                                     &
+!                    ! OUT ML correction to neutral phi_h (phi_h - phi_hn).
+,cd_ml_out(points)                                                             &
+!                    ! OUT ML-derived dimensionless momentum transfer
+!                    !     coefficient including orographic form drag.
+,v_s_ml_out(points)                                                            &
+!                    ! OUT ML-derived surface layer scaling velocity
+!                    !     including orographic form drag (m/s).
+,v_s_std_ml_out(points)
+!                    ! OUT ML-derived surface layer scaling velocity
+!                    !     excluding orographic form drag (m/s).
 
 !    Workspace usage----------------------------------------------------
 
@@ -292,8 +312,6 @@ REAL(KIND=real_jlslsm) ::                                                      &
                      ! Previous value of u_s_std
 ,recip_l_mo_old(points)                                                        &
                      ! Previous value of recip_l_mo
-,phi_m_old(points)                                                             &
-                     ! Previous value of phi_m
 ,db_old(points)                                                                &
                      ! Previous value of db
 ,db_older(points)                                                              &
@@ -366,18 +384,27 @@ INTEGER :: n_its ! Number of iterations for Monin-Obukhov length
 INTEGER :: indexi(surft_pts), indexj(surft_pts)
               ! Arrays to store horizontal field indices i and j
 
-REAL(KIND=real_jlslsm), ALLOCATABLE ::                                         &
- recip_l_mo_neutral(:)                                                         &
-              ! Zero 1/L used to evaluate neutral stability functions
-,phi_mn_tmp(:)                                                                 &
-              ! Neutral stability function for momentum
-,phi_hn_tmp(:)
-              ! Neutral stability function for scalars (unused)
+! Work variables for the ML stability-function diagnostic flow.
+REAL(KIND=real_jlslsm), PARAMETER :: phi_min_ml = 0.5
+              ! Lower limit applied to the ML phi_m and phi_h before they
+              ! are used to derive transfer coefficients.
+
+LOGICAL :: l_ml   ! True if the ML diagnostic flow is run.
 
 REAL(KIND=real_jlslsm) ::                                                      &
- tl_1_forcing(points),lw_down_forcing(points),sw_surft_forcing(points),       &
- vshr_land_forcing(points),z1_tq_forcing(points)
-              ! Tile-wise forcing vectors passed to PHI_M_H.
+ tl_1_ml(points), lw_down_ml(points), vshr_ml(points),                         &
+ z_uv_ml(points), z_tq_ml(points)                                              &
+              ! Tile-wise copies of gridbox inputs to the neural network.
+,phi_m_ml(points), phi_h_ml(points)                                            &
+              ! ML phi_m and phi_h, clamped to at least phi_min_ml.
+,cdv_ml(points), cdv_std_ml(points), chv_ml(points)                            &
+              ! ML-derived transfer coefficients (m/s).
+,v_s_ml(points), v_s_std_ml(points)
+              ! ML-derived surface layer scaling velocities (m/s).
+
+REAL(KIND=real_jlslsm) ::                                                      &
+ beta_init_ml, beta_gust_ml
+              ! Convective gust parameters matching the selected iteration.
 
 REAL(KIND=real_jlslsm) ::                                                      &
  b_flux                                                                        &
@@ -433,45 +460,6 @@ DO k = 1,surft_pts
   indexj(k) = (pts_index(l) - 1) / t_i_length + 1
   indexi(k) = pts_index(l) - (indexj(k) - 1) * t_i_length
 END DO
-
-! Build tile-wise forcing arrays for phi_m_h.
-tl_1_forcing(:) = 0.0
-lw_down_forcing(:) = 0.0
-sw_surft_forcing(:) = 0.0
-vshr_land_forcing(:) = 0.0
-z1_tq_forcing(:) = 0.0
-
-DO k = 1,surft_pts
-  l = surft_index(k)
-  j = indexj(k)
-  i = indexi(k)
-
-  IF (PRESENT(tl_1)) THEN
-    tl_1_forcing(l) = tl_1(i,j)
-  ELSE
-    tl_1_forcing(l) = t_elev(l)
-  END IF
-
-  IF (PRESENT(lw_down)) THEN
-    lw_down_forcing(l) = lw_down(i,j)
-  END IF
-
-  IF (PRESENT(sw_surft)) THEN
-    sw_surft_forcing(l) = sw_surft(l)
-  ELSE
-    sw_surft_forcing(l) = radnet(l)
-  END IF
-
-  vshr_land_forcing(l) = vshr(i,j)
-  z1_tq_forcing(l) = z1_tq(i,j)
-END DO
-
-CALL phi_m_h_ml(points,surft_pts,surft_index,                                  &
-               tl_1_forcing,lw_down_forcing,sw_surft_forcing,z1_tq_forcing,    &
-               tstar,vshr_land_forcing,z0m,z0h,phi_m,phi_h)
-
-phi_m = MAX(phi_m, 0.5)
-phi_h = MAX(phi_h, 0.5)
 
 n_its         = 8     ! Found typically 0.2% from converged value
 tolerance     = 0.25  ! Set tolerance value for convergence of db to 25%
@@ -529,24 +517,24 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                      z0m, z0h, zdt)
     SELECT CASE (i_modiscopt)
     CASE (off)
-      ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
-      !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
-      !                       phi_m, phi_h)
+      CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
+                            recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
+                            phi_m, phi_h)
     CASE (on)
-      ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
-      !                  recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-      !                  phi_m, phi_h)
+      CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
+                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+                       phi_m, phi_h)
     END SELECT
   ELSE
     SELECT CASE (i_modiscopt)
     CASE (off)
-      ! CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
-      !                recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
-      !                phi_m,phi_h)
+      CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
+                     recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
+                     phi_m,phi_h)
     CASE (on)
-      ! CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
-      !                recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
-      !                phi_m,phi_h)
+      CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
+                     recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
+                     phi_m,phi_h)
     END SELECT
   END IF
 
@@ -710,7 +698,6 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old,                 &
 !$OMP        v_s, v_s_old, v_s_std, v_s_std_old,                               &
 !$OMP        u_s_std, u_s_std_old, recip_l_mo, recip_l_mo_old,                 &
-!$OMP        phi_m, phi_m_old,                                                 &
 !$OMP        db_diff_old, db_diff, db_old, db_older, indexi, indexj) SCHEDULE(STATIC)
       DO k = 1,surft_pts
         l = surft_index(k)
@@ -760,7 +747,6 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
         v_s_std_old(l)    = v_s_std(l)
         u_s_std_old(l)    = u_s_std(l)
         recip_l_mo_old(l) = recip_l_mo(l)
-        phi_m_old(l)      = phi_m(l)
 
       END DO
 !$OMP END PARALLEL DO
@@ -856,13 +842,13 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
 
       SELECT CASE (i_modiscopt)
       CASE (off)
-        ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
-        !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
-        !                       phi_m, phi_h)
+        CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
+                              recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
+                              phi_m, phi_h)
       CASE (on)
-        ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
-        !                recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-        !                phi_m, phi_h)
+        CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
+                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+                       phi_m, phi_h)
       END SELECT
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -879,13 +865,13 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
     ELSE
       SELECT CASE (i_modiscopt)
       CASE (off)
-        ! CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
-        !                recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
-        !                phi_m,phi_h)
+        CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
+                       recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
+                       phi_m,phi_h)
       CASE (on)
-        ! CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
-        !                recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
-        !                phi_m,phi_h)
+        CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
+                       recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
+                       phi_m,phi_h)
       END SELECT
 
 
@@ -902,9 +888,6 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
 !$OMP END PARALLEL DO
     END IF
   END DO ! Iteration loop
-
-  PRINT *, 'fcdch final phi_m = ', phi_m
-  PRINT *, 'fcdch final phi_h = ', phi_h
 
 ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
 
@@ -957,24 +940,24 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
                      z0m, z0h, zdt)
     SELECT CASE (i_modiscopt)
     CASE (off)
-      ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
-      !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
-      !                       phi_m, phi_h)
+      CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
+                            recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,    &
+                            phi_m, phi_h)
     CASE (on)
-      ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
-      !                  recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-      !                  phi_m, phi_h)
+      CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
+                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+                       phi_m, phi_h)
     END SELECT
   ELSE
     SELECT CASE (i_modiscopt)
     CASE (off)
-      ! CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
-      !                recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
-      !                phi_m,phi_h)
+      CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
+                     recip_l_mo,z1_uv,z1_tq,z0m,z0h,                           &
+                     phi_m,phi_h)
     CASE (on)
-      ! CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
-      !                recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
-      !                phi_m,phi_h)
+      CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
+                     recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                   &
+                     phi_m,phi_h)
     END SELECT
   END IF
 
@@ -1136,7 +1119,6 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old,                 &
 !$OMP        v_s, v_s_old, v_s_std, v_s_std_old,                               &
 !$OMP        u_s_std, u_s_std_old, recip_l_mo, recip_l_mo_old,                 &
-!$OMP        phi_m, phi_m_old,                                                 &
 !$OMP        db_diff_old, db_diff, db_old, db_older, indexi, indexj) SCHEDULE(STATIC)
       DO k = 1,surft_pts
         l = surft_index(k)
@@ -1186,7 +1168,6 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
         v_s_std_old(l)    = v_s_std(l)
         u_s_std_old(l)    = u_s_std(l)
         recip_l_mo_old(l) = recip_l_mo(l)
-        phi_m_old(l)      = phi_m(l)
 
       END DO
 !$OMP END PARALLEL DO
@@ -1291,13 +1272,13 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
 
       SELECT CASE (i_modiscopt)
       CASE (off)
-        ! CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
-        !                       recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
-        !                       phi_m, phi_h)
+        CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,       &
+                              recip_l_mo, z1_uv, z1_tq, canht, lai, z0m, z0h,  &
+                              phi_m, phi_h)
       CASE (on)
-        ! CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
-        !                recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
-        !                phi_m, phi_h)
+        CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,   &
+                       recip_l_mo, z1_uv_top, z1_tq_top, canht, lai, z0m, z0h, &
+                       phi_m, phi_h)
       END SELECT
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
@@ -1314,13 +1295,13 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
     ELSE
       SELECT CASE (i_modiscopt)
       CASE (off)
-        ! CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
-        !                recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
-        !                phi_m,phi_h)
+        CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                 &
+                       recip_l_mo,z1_uv,z1_tq,z0m,z0h,                         &
+                       phi_m,phi_h)
       CASE (on)
-        ! CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
-        !                recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
-        !                phi_m,phi_h)
+        CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,             &
+                       recip_l_mo,z1_uv_top,z1_tq_top,z0m,z0h,                 &
+                       phi_m,phi_h)
       END SELECT
 
 
@@ -1338,9 +1319,6 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
     END IF
   END DO ! Iteration loop
 
-  PRINT *, 'fcdch final phi_m = ', phi_m
-  PRINT *, 'fcdch final phi_h = ', phi_h
-
 END IF ! test on cor_mo_iter eq Improve_Initial_Guess
 
 IF (l_mo_buoyancy_calc) THEN
@@ -1353,7 +1331,7 @@ IF (l_mo_buoyancy_calc) THEN
 !$OMP SHARED(surft_pts, surft_index, pts_index, t_i_length, db, db_older,      &
 !$OMP        chv, chv_old, cdv, cdv_old, cdv_std, cdv_std_old, v_s, v_s_old,   &
 !$OMP        v_s_std, v_s_std_old, u_s_std, u_s_std_old, recip_l_mo,           &
-!$OMP        recip_l_mo_old, phi_m, phi_m_old, tolerance) SCHEDULE(STATIC)
+!$OMP        recip_l_mo_old, tolerance) SCHEDULE(STATIC)
   DO k = 1,surft_pts
     l = surft_index(k)
 
@@ -1370,62 +1348,9 @@ IF (l_mo_buoyancy_calc) THEN
       v_s_std(l)    = v_s_std_old(l)
       u_s_std(l)    = u_s_std_old(l)
       recip_l_mo(l) = recip_l_mo_old(l)
-      phi_m(l)      = phi_m_old(l)
     END IF
   END DO
 !$OMP END PARALLEL DO
-END IF
-
-!-----------------------------------------------------------------------
-! ML diagnostics: final phi_m and its neutral value (1/L = 0), evaluated
-! with the same stability routine and roughness lengths as phi_m.
-!-----------------------------------------------------------------------
-IF (PRESENT(phi_m_out) .OR. PRESENT(phi_mn_out)) THEN
-  ALLOCATE(recip_l_mo_neutral(points), phi_mn_tmp(points), phi_hn_tmp(points))
-  recip_l_mo_neutral(:) = 0.0
-  phi_mn_tmp(:)         = 0.0
-  phi_hn_tmp(:)         = 0.0
-
-  IF (l_vegdrag) THEN
-    SELECT CASE (i_modiscopt)
-    CASE (off)
-      CALL can_drag_phi_m_h(points, surft_pts, surft_index, pts_index,         &
-                            recip_l_mo_neutral, z1_uv, z1_tq, canht, lai,      &
-                            z0m, z0h, phi_mn_tmp, phi_hn_tmp)
-    CASE (on)
-      CALL can_drag_phi_m_h_vol(points, surft_pts, surft_index, pts_index,     &
-                            recip_l_mo_neutral, z1_uv_top, z1_tq_top, canht,   &
-                            lai, z0m, z0h, phi_mn_tmp, phi_hn_tmp)
-    END SELECT
-  ELSE
-    SELECT CASE (i_modiscopt)
-    CASE (off)
-      CALL phi_m_h ( points,surft_pts,surft_index,pts_index,                   &
-                     recip_l_mo_neutral,z1_uv,z1_tq,z0m,z0h,                   &
-                     phi_mn_tmp,phi_hn_tmp)
-    CASE (on)
-      CALL phi_m_h_vol ( points,surft_pts,surft_index,pts_index,               &
-                     recip_l_mo_neutral,z1_uv_top,z1_tq_top,z0m,z0h,           &
-                     phi_mn_tmp,phi_hn_tmp)
-    END SELECT
-  END IF
-
-  IF (PRESENT(phi_m_out)) THEN
-    phi_m_out(:) = 0.0
-    DO k = 1,surft_pts
-      l = surft_index(k)
-      phi_m_out(l) = phi_m(l)
-    END DO
-  END IF
-  IF (PRESENT(phi_mn_out)) THEN
-    phi_mn_out(:) = 0.0
-    DO k = 1,surft_pts
-      l = surft_index(k)
-      phi_mn_out(l) = phi_mn_tmp(l)
-    END DO
-  END IF
-
-  DEALLOCATE(phi_hn_tmp, phi_mn_tmp, recip_l_mo_neutral)
 END IF
 
 !-----------------------------------------------------------------------
@@ -1443,6 +1368,154 @@ DO k = 1,surft_pts
   chv(l) = chv(l) / vshr(i,j)
 END DO
 !$OMP END PARALLEL DO
+
+!-----------------------------------------------------------------------
+! ML stability-function diagnostic flow.
+! The neural network predicts phi_m and phi_h directly from the forcing,
+! so they do not depend on the Obukhov length. They are held fixed while
+! the transfer coefficients and scaling velocities are iterated in the same
+! way as above, using the final buoyancy difference and roughness lengths
+! from the standard calculation. Only the *_ml_out arguments are set here.
+!-----------------------------------------------------------------------
+l_ml = .FALSE.
+IF (PRESENT(l_ml_flow)) l_ml = l_ml_flow
+
+IF (l_ml) THEN
+
+  tl_1_ml(:)    = 0.0
+  lw_down_ml(:) = 0.0
+  vshr_ml(:)    = 0.0
+  z_uv_ml(:)    = 0.0
+  z_tq_ml(:)    = 0.0
+  phi_m_ml_out(:)      = 0.0
+  phi_h_ml_out(:)      = 0.0
+  phi_m_corr_ml_out(:) = 0.0
+  phi_h_corr_ml_out(:) = 0.0
+  cd_ml_out(:)         = 0.0
+  v_s_ml_out(:)        = 0.0
+  v_s_std_ml_out(:)    = 0.0
+
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    j = indexj(k)
+    i = indexi(k)
+    tl_1_ml(l)    = tl_1(i,j)
+    lw_down_ml(l) = lw_down(i,j)
+    vshr_ml(l)    = vshr(i,j)
+    z_uv_ml(l)    = z1_uv(i,j)
+    z_tq_ml(l)    = z1_tq(i,j)
+  END DO
+
+  CALL phi_m_h_ml(points,surft_pts,surft_index,                                &
+                  tl_1_ml,lw_down_ml,sw_surft,z_uv_ml,z_tq_ml,tstar,vshr_ml,   &
+                  z0m,z0h,phi_m_ml_out,phi_h_ml_out,                           &
+                  phi_m_corr_ml_out,phi_h_corr_ml_out)
+
+  IF (cor_mo_iter == Improve_Initial_Guess) THEN
+    beta_init_ml = beta_cnv_bl
+    beta_gust_ml = beta_cnv_bl
+  ELSE IF (srf_ex_cnv_gust == ip_srfexwithcnv) THEN
+    beta_init_ml = beta
+    beta_gust_ml = beta_cndd
+  ELSE
+    beta_init_ml = beta
+    beta_gust_ml = beta
+  END IF
+
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    j = indexj(k)
+    i = indexi(k)
+    ! The ML phi can be zero or negative, which would give negative transfer
+    ! coefficients, so limit them before use. The raw values are returned.
+    phi_m_ml(l) = MAX(phi_m_ml_out(l), phi_min_ml)
+    phi_h_ml(l) = MAX(phi_h_ml_out(l), phi_min_ml)
+
+    ! Initial scaling velocities, as for the standard iteration.
+    IF (db(l)  <   0.0 .AND. vshr(i,j)  <   2.0) THEN
+      v_s_std_ml(l) = beta_init_ml * SQRT( beta_init_ml *                      &
+                      ( vkman / phi_h_ml(l) ) * zh(i,j) * (-db(l)) )
+      IF (cor_mo_iter == Improve_Initial_Guess) THEN
+        v_s_std_ml(l) = MAX(v_s_std_ml(l),                                     &
+                            ( vkman / phi_m_ml(l) ) * vshr(i,j))
+      END IF
+      v_s_ml(l) = v_s_std_ml(l)
+    ELSE IF (l_vegdrag) THEN
+      v_s_std_ml(l) = ( vkman / phi_m_ml(l) ) * vshr(i,j)
+      v_s_ml(l) = v_s_std_ml(l) / wind_profile_factor(l)
+    ELSE
+      v_s_ml(l) = ( vkman / phi_m_ml(l) ) * vshr(i,j)
+      v_s_std_ml(l) = v_s_ml(l) * wind_profile_factor(l)
+    END IF
+  END DO
+
+  ! Iteration 0 only sets the transfer coefficients from the initial
+  ! scaling velocities; subsequent iterations update both.
+  DO it = 0,n_its
+    DO k = 1,surft_pts
+      l = surft_index(k)
+      j = indexj(k)
+      i = indexi(k)
+
+      IF (it > 0) THEN
+        b_flux = -chv_ml(l) * db(l)
+        IF ( vshr(i,j) > min_wind) THEN
+          u_s2 = cdv_ml(l) * vshr(i,j)
+        ELSE
+          u_s2 = min_ustar
+        END IF
+        u_s_std2 = cdv_std_ml(l) * vshr(i,j)
+
+        IF (db(l)  <   -EPSILON(0.0)) THEN
+          w_s = MAX( (zh(i,j) * b_flux)**third, EPSILON(0.0) )
+          SELECT CASE(srf_ex_cnv_gust)
+          CASE (off)
+            v_s_ml(l) = SQRT( 0.5 * ( beta_gust_ml * beta_gust_ml * w_s * w_s  &
+                   + SQRT( (beta_gust_ml * w_s)**4 + 4.0 * u_s2 * u_s2 )) )
+            v_s_std_ml(l) = SQRT( 0.5 * ( beta_gust_ml * beta_gust_ml          &
+                   * w_s * w_s + SQRT( (beta_gust_ml * w_s)**4                 &
+                   + 4.0 * u_s_std2 * u_s_std2 )) )
+          CASE (ip_srfexwithcnv)
+            v_s_ml(l) = SQRT( 0.5 * ( beta_gust_ml * beta_gust_ml * w_s * w_s  &
+                   + wstrcnvgust(i,j)**2                                       &
+                   + SQRT( ((beta_gust_ml * w_s)**2                            &
+                   + wstrcnvgust(i,j)**2)**2                                   &
+                   + 4.0 * u_s2 * u_s2 )) )
+            v_s_std_ml(l) = SQRT( 0.5 * ( beta_gust_ml * beta_gust_ml          &
+                   * w_s * w_s + wstrcnvgust(i,j)**2                           &
+                   + SQRT( ((beta_gust_ml * w_s)**2                            &
+                   + wstrcnvgust(i,j)**2)**2                                   &
+                   + 4.0 * u_s_std2 * u_s_std2 )) )
+          END SELECT
+        ELSE
+          v_s_ml(l) = SQRT( u_s2 )
+          v_s_std_ml(l) = SQRT( u_s_std2 )
+        END IF
+      END IF
+
+      chv_ml(l) = ( vkman / phi_h_ml(l) ) * v_s_std_ml(l)
+      IF (l_vegdrag) THEN
+        cdv_std_ml(l) = ( vkman / phi_m_ml(l) ) * v_s_std_ml(l)
+        cdv_ml(l) = cdv_std_ml(l) * ( v_s_ml(l) / v_s_std_ml(l) ) /            &
+                    wind_profile_factor(l)
+      ELSE
+        cdv_ml(l) = ( vkman / phi_m_ml(l) ) * v_s_ml(l)
+        cdv_std_ml(l) = cdv_ml(l) * ( v_s_std_ml(l) / v_s_ml(l) ) *            &
+                        wind_profile_factor(l)
+      END IF
+    END DO
+  END DO
+
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    j = indexj(k)
+    i = indexi(k)
+    cd_ml_out(l)      = cdv_ml(l) / vshr(i,j)
+    v_s_ml_out(l)     = v_s_ml(l)
+    v_s_std_ml_out(l) = v_s_std_ml(l)
+  END DO
+
+END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN

@@ -18,8 +18,6 @@ CONTAINS
         REAL(KIND=4) :: input4(1,6)
         REAL(KIND=4) :: output4(1,2)
         REAL(KIND=4) :: output_c4(2)
-        INTEGER :: i
-        REAL(KIND=4) :: cutoff = 4.26 ! ~1 in 100,000
 
         ! ['LWdown', 'SWdown', 'Wind', 'Tair', 't_surf', 'height']
         REAL(KIND=4), PARAMETER :: means_x(6) = (/ &
@@ -43,21 +41,8 @@ CONTAINS
 
         CALL phi_mh_model(input4, output4)
 
-        PRINT *, '---- MODEL_RUNNER'
-        PRINT *, '>>>> ', input4
-        PRINT *, '>>>> ', output4
-
         output_c4 = (output4(1,:) * scales_y) + means_y
 
-        DO i = 1, SIZE(input)
-            IF (ABS(input4(1,i)) > cutoff) PRINT *, '!!!! rare input ', i, ': ', &
-                REAL(input(i), KIND=4), input4(1,i)
-        END DO
-        DO i = 1, SIZE(output4, 2)
-            IF (ABS(output4(1,i)) > cutoff) PRINT *, '!!!! rare output ', i, ': ', &
-                output_c4(i), output4(1,i)
-        END DO
-        
         output = REAL(output_c4, KIND=real_jlslsm)
     END SUBROUTINE phi_mh_model_runner
 END MODULE model_runner_mod

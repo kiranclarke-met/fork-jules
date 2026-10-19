@@ -9376,7 +9376,7 @@ DATA metadata(724) / var_metadata(                                             &
 ! Variable type
     var_type_surft,                                                            &
 ! Long name
-    "ML: Tile stability function for momentum (phi_m)",                        &
+    "ML: NN tile stability function for momentum (phi_m)",                     &
 ! Units
     ""                                                                         &
   ) /
@@ -9389,7 +9389,7 @@ DATA metadata(725) / var_metadata(                                             &
 ! Variable type
     var_type_surft,                                                            &
 ! Long name
-    "ML: Tile phi_m minus its neutral value (phi_m - phi_mn)",                 &
+    "ML: NN tile correction to neutral phi_m (phi_m - phi_mn)",                &
 ! Units
     ""                                                                         &
   ) /
@@ -9402,7 +9402,7 @@ DATA metadata(726) / var_metadata(                                             &
 ! Variable type
     var_type_surft,                                                            &
 ! Long name
-    "ML: Tile surface momentum flux",                                          &
+    "ML: Tile surface momentum flux from NN phi",                              &
 ! Units
     "N m-2"                                                                    &
   ) /
@@ -9415,7 +9415,7 @@ DATA metadata(727) / var_metadata(                                             &
 ! Variable type
     var_type_surft,                                                            &
 ! Long name
-    "ML: Tile effective friction velocity (v_s)",                              &
+    "ML: Tile effective friction velocity (v_s) from NN phi",                  &
 ! Units
     "m s-1"                                                                    &
   ) /
@@ -9428,7 +9428,7 @@ DATA metadata(728) / var_metadata(                                             &
 ! Variable type
     var_type_surft,                                                            &
 ! Long name
-    "ML: Tile standard friction velocity (u_s_std)",                           &
+    "ML: Tile standard friction velocity (v_s_std) from NN phi",               &
 ! Units
     "m s-1"                                                                    &
   ) /
@@ -9441,7 +9441,7 @@ DATA metadata(729) / var_metadata(                                             &
 ! Variable type
     var_type_surft,                                                            &
 ! Long name
-    "ML: Tile friction velocity SQRT(cd)*vshr",                                &
+    "ML: Tile friction velocity SQRT(cd)*vshr from NN phi",                    &
 ! Units
     "m s-1"                                                                    &
   ) /
@@ -9522,5 +9522,31 @@ DATA metadata(735) / var_metadata(                                             &
     "ML: Height of lowest wind level copied onto tiles",                       &
 ! Units
     "m"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-phi_h
+!-----------------------------------------------------------------------------
+DATA metadata(736) / var_metadata(                                             &
+! String identifier
+    'ml-phi_h',                                                                &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: NN tile stability function for heat (phi_h)",                         &
+! Units
+    ""                                                                         &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for ml-phi_h_corr
+!-----------------------------------------------------------------------------
+DATA metadata(737) / var_metadata(                                             &
+! String identifier
+    'ml-phi_h_corr',                                                           &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML: NN tile correction to neutral phi_h (phi_h - phi_hn)",                &
+! Units
+    ""                                                                         &
   ) /
 #endif
