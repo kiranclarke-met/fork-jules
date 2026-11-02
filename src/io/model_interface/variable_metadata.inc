@@ -9367,4 +9367,17 @@ DATA metadata(723) / var_metadata(                                             &
 ! Units
     "kg m-2 s-1"                                                               &
   ) /
+!-----------------------------------------------------------------------------
+! Metadata for phi_m
+!-----------------------------------------------------------------------------
+DATA metadata(724) / var_metadata(                                             &
+! String identifier
+    'phi_m',                                                                   &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "Integrated momentum stability function for land surface tiles",          &
+! Units
+    "1"                                                                        &
+  ) /
 #endif

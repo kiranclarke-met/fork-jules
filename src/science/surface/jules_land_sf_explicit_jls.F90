@@ -2314,8 +2314,14 @@ DO n = 1,nsurft
     rhostar,bq_1,bt_1,                                                         &
     cd_surft(:,n),ch_surft(:,n),cd_std(:,n),                                   &
     v_s_surft(:,n),v_s_std(:,n),recip_l_mo_surft(:,n),                         &
-    u_s_iter_surft(:,n)                                                        &
+    u_s_iter_surft(:,n),phi_m_out=phi_m                                        &
     )
+  IF (sf_diag%l_phi_m_surft) THEN
+    DO k = 1,surft_pts(n)
+      l = surft_index(k,n)
+      sf_diag%phi_m_surft(l,n) = phi_m(l)
+    END DO
+  END IF
 END DO
 
 ! As roughness length have been changed by vegetation drag effect, effective

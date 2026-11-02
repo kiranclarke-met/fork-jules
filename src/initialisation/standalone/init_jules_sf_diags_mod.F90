@@ -305,6 +305,23 @@ ELSE
 END IF
 
 !-----------------------------------------------------------------------------
+! Tiled momentum stability function.
+!-----------------------------------------------------------------------------
+IF ( sf_diag % l_phi_m_surft ) THEN
+  ALLOCATE( sf_diag%phi_m_surft(land_pts,nsurft), STAT = ERROR )
+  error_sum = error_sum + ERROR
+ELSE
+  ALLOCATE( sf_diag%phi_m_surft(1,1), STAT = ERROR )
+  error_sum = error_sum + ERROR
+END IF
+IF ( error_sum == 0 ) THEN
+  sf_diag%phi_m_surft(:,:) = 0.0
+ELSE
+  CALL ereport( "Error when allocating sf_diag % phi_m_surft.",                &
+                errcode, " Check " // TRIM(RoutineName) )
+END IF
+
+!-----------------------------------------------------------------------------
 ! Latent heat flux.
 !-----------------------------------------------------------------------------
 IF ( sf_diag % slh ) THEN

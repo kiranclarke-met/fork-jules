@@ -83,6 +83,7 @@ TYPE :: strnewsfdiag
   LOGICAL :: l_resp_p_pft    = .FALSE. ! 692 plant respiration
   LOGICAL :: l_tau_1         = .FALSE. ! 695 Grid-box mean momentum flux
   LOGICAL :: l_tau_surft     = .FALSE. ! 696 Momentum flux in surface tiles
+  LOGICAL :: l_phi_m_surft   = .FALSE. ! Final momentum stability function
 
   REAL(KIND=real_jlslsm), ALLOCATABLE :: z0h_eff_gb(:,:)
   !                    27      effective roughness length for heat
@@ -232,6 +233,8 @@ TYPE :: strnewsfdiag
   REAL(KIND=real_jlslsm), ALLOCATABLE :: tau_surft(:,:)
   !                    695      Tiled surface momentum flux on P-grid
   !                             (N/m2)
+  REAL(KIND=real_jlslsm), ALLOCATABLE :: phi_m_surft(:,:)
+  !                    Final integrated momentum stability function on tiles
 
 END TYPE strnewsfdiag
 
@@ -557,6 +560,12 @@ IF (sf_diag%l_tau_surft) THEN
 ELSE
   ALLOCATE(sf_diag%tau_surft(1,1))
 END IF
+IF (sf_diag%l_phi_m_surft) THEN
+  ALLOCATE(sf_diag%phi_m_surft(land_points,ntiles))
+ELSE
+  ALLOCATE(sf_diag%phi_m_surft(1,1))
+END IF
+sf_diag%phi_m_surft(:,:) = 0.0
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN
@@ -572,6 +581,7 @@ IMPLICIT NONE
 TYPE (strnewsfdiag), INTENT(IN OUT) :: sf_diag
 
 DEALLOCATE(sf_diag%tau_surft)
+DEALLOCATE(sf_diag%phi_m_surft)
 DEALLOCATE(sf_diag%tau_1)
 DEALLOCATE(sf_diag%resp_p_pft)
 DEALLOCATE(sf_diag%npp_pft)

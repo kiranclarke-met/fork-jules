@@ -2285,6 +2285,10 @@ CASE ( 'tau' )
   cube_land = cube_from_array(sf_diag%tau_surft)
   cube = map_from_land(cube_land)
 
+CASE ( 'phi_m' )
+  cube_land = cube_from_array(sf_diag%phi_m_surft)
+  cube = map_from_land(cube_land)
+
 CASE ( 'gc' )
   cube_land = cube_from_array(progs%gc_surft)
   cube = map_from_land(cube_land)

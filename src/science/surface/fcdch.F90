@@ -38,7 +38,7 @@ SUBROUTINE fcdch (                                                             &
  t_elev,tsurf,tstar,vfrac,emis,emis_soil,                                      &
  anthrop_heat,scaling_urban,alpha1,hcons,ashtf,                                &
  rhostar,bq_1,bt_1,                                                            &
- cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std                                &
+ cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,phi_m_out                      &
 )
 
 USE atm_fields_bounds_mod, ONLY: tdims
@@ -238,6 +238,8 @@ REAL(KIND=real_jlslsm) ::                                                      &
 ,recip_l_mo(points)
 !                    ! OUT Reciprocal of the Monin-Obukhov length
 !                    !     (m^-1).
+
+REAL(KIND=real_jlslsm), OPTIONAL, INTENT(OUT) :: phi_m_out(points)
 
 !    Workspace usage----------------------------------------------------
 
@@ -1307,6 +1309,13 @@ DO k = 1,surft_pts
   chv(l) = chv(l) / vshr(i,j)
 END DO
 !$OMP END PARALLEL DO
+
+IF (PRESENT(phi_m_out)) THEN
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    phi_m_out(l) = phi_m(l)
+  END DO
+END IF
 
 IF (lhook) CALL dr_hook(ModuleName//':'//RoutineName,zhook_out,zhook_handle)
 RETURN
