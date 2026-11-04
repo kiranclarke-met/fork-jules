@@ -1979,6 +1979,18 @@ CASE ( 'ls_snow' )
 CASE ( 'lw_down' )
   cube = cube_from_array(forcing%lw_down_ij)
 
+CASE ( 'lwdown_f' )
+  DO n = 1,nsurft
+    DO j = 1,ainfo%surft_pts(n)
+      l = ainfo%surft_index(j,n)
+      k = (ainfo%land_index(l) - 1) / t_i_length + 1
+      i = ainfo%land_index(l) - (k-1) * t_i_length
+      workspace_surft(l,n) = forcing%lw_down_ij(i,k)
+    END DO
+  END DO
+  cube_land = cube_from_array(workspace_surft)
+  cube = map_from_land(cube_land)
+
 CASE ( 'precip' )
   cube = cube_from_array(forcing%ls_rain_ij + forcing%con_rain_ij +            &
                          forcing%ls_snow_ij + forcing%con_snow_ij)
@@ -2013,6 +2025,18 @@ CASE ( 'surf_ht_flux_gb' )
 CASE ( 'sw_down' )
   cube = cube_from_array(forcing%sw_down_ij)
 
+CASE ( 'swdown_f' )
+  DO n = 1,nsurft
+    DO j = 1,ainfo%surft_pts(n)
+      l = ainfo%surft_index(j,n)
+      k = (ainfo%land_index(l) - 1) / t_i_length + 1
+      i = ainfo%land_index(l) - (k-1) * t_i_length
+      workspace_surft(l,n) = forcing%sw_down_ij(i,k)
+    END DO
+  END DO
+  cube_land = cube_from_array(workspace_surft)
+  cube = map_from_land(cube_land)
+
 CASE ( 't1p5m_gb' )
   cube = cube_from_array(sf_diag%t1p5m)
 
@@ -2025,10 +2049,20 @@ CASE ( 'tauy1' )
 CASE ( 'tl1' )
   cube = cube_from_array(forcing%tl_1_ij)
 
+CASE ( 'tair_f_gb' )
+  cube = cube_from_array(forcing%tl_1_ij)
+
 CASE ( 'tstar_gb' )
   !     Don't use tstar as that is calculated part-way through a timestep.
   cube_land = cube_from_array(surftiles_to_gbm( progs%tstar_surft, ainfo ))
   cube = map_from_land(cube_land)
+
+CASE ( 'tsurf_f_gb' )
+  cube_land = cube_from_array(surftiles_to_gbm(progs%tstar_surft, ainfo))
+  cube = map_from_land(cube_land)
+
+CASE ( 'reference_height_f_gb' )
+  cube = cube_from_array(ainfo%z1_uv_ij)
 
   !-----------------------------------------------------------------------------
   ! imogen driving variables
@@ -2289,6 +2323,20 @@ CASE ( 'phi_m' )
   cube_land = cube_from_array(sf_diag%phi_m_surft)
   cube = map_from_land(cube_land)
 
+CASE ( 'phi_m_gb' )
+  cube_land = cube_from_array(                                               &
+    surftiles_to_gbm(sf_diag%phi_m_surft, ainfo))
+  cube = map_from_land(cube_land)
+
+CASE ( 'phi_h' )
+  cube_land = cube_from_array(sf_diag%phi_h_surft)
+  cube = map_from_land(cube_land)
+
+CASE ( 'phi_h_gb' )
+  cube_land = cube_from_array(                                               &
+    surftiles_to_gbm(sf_diag%phi_h_surft, ainfo))
+  cube = map_from_land(cube_land)
+
 CASE ( 'gc' )
   cube_land = cube_from_array(progs%gc_surft)
   cube = map_from_land(cube_land)
@@ -2446,8 +2494,44 @@ CASE ( 't1p5m' )
   cube_land = cube_from_array(sf_diag%t1p5m_surft)
   cube = map_from_land(cube_land)
 
+CASE ( 'tair_f' )
+  DO n = 1,nsurft
+    DO j = 1,ainfo%surft_pts(n)
+      l = ainfo%surft_index(j,n)
+      k = (ainfo%land_index(l) - 1) / t_i_length + 1
+      i = ainfo%land_index(l) - (k-1) * t_i_length
+      workspace_surft(l,n) = forcing%tl_1_ij(i,k)
+    END DO
+  END DO
+  cube_land = cube_from_array(workspace_surft)
+  cube = map_from_land(cube_land)
+
 CASE ( 'tstar' )
   cube_land = cube_from_array(progs%tstar_surft)
+  cube = map_from_land(cube_land)
+
+CASE ( 'reference_height_f' )
+  DO n = 1,nsurft
+    DO j = 1,ainfo%surft_pts(n)
+      l = ainfo%surft_index(j,n)
+      k = (ainfo%land_index(l) - 1) / t_i_length + 1
+      i = ainfo%land_index(l) - (k-1) * t_i_length
+      workspace_surft(l,n) = ainfo%z1_uv_ij(i,k)
+    END DO
+  END DO
+  cube_land = cube_from_array(workspace_surft)
+  cube = map_from_land(cube_land)
+
+CASE ( 'wind_f' )
+  DO n = 1,nsurft
+    DO j = 1,ainfo%surft_pts(n)
+      l = ainfo%surft_index(j,n)
+      k = (ainfo%land_index(l) - 1) / t_i_length + 1
+      i = ainfo%land_index(l) - (k-1) * t_i_length
+      workspace_surft(l,n) = SQRT(u_1_ij(i,k)**2 + v_1_ij(i,k)**2)
+    END DO
+  END DO
+  cube_land = cube_from_array(workspace_surft)
   cube = map_from_land(cube_land)
 
 CASE ( 'tsurf_elev_surft' )

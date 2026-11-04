@@ -38,7 +38,8 @@ SUBROUTINE fcdch (                                                             &
  t_elev,tsurf,tstar,vfrac,emis,emis_soil,                                      &
  anthrop_heat,scaling_urban,alpha1,hcons,ashtf,                                &
  rhostar,bq_1,bt_1,                                                            &
- cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,phi_m_out                      &
+ cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,                              &
+ phi_m_out,phi_h_out                                                          &
 )
 
 USE atm_fields_bounds_mod, ONLY: tdims
@@ -239,7 +240,7 @@ REAL(KIND=real_jlslsm) ::                                                      &
 !                    ! OUT Reciprocal of the Monin-Obukhov length
 !                    !     (m^-1).
 
-REAL(KIND=real_jlslsm), OPTIONAL, INTENT(OUT) :: phi_m_out(points)
+REAL(KIND=real_jlslsm), OPTIONAL, INTENT(OUT) :: phi_m_out(points), phi_h_out(points)
 
 !    Workspace usage----------------------------------------------------
 
@@ -1314,6 +1315,13 @@ IF (PRESENT(phi_m_out)) THEN
   DO k = 1,surft_pts
     l = surft_index(k)
     phi_m_out(l) = phi_m(l)
+  END DO
+END IF
+
+IF (PRESENT(phi_h_out)) THEN
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    phi_h_out(l) = phi_h(l)
   END DO
 END IF
 

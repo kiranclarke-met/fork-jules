@@ -3157,7 +3157,7 @@ DATA metadata(248) / var_metadata(                                             &
 ! Variable type
     var_type_surft,                                                            &
 ! Long name
-    "Tile surface temperature",                                                &
+    "Tile surface skin temperature",                                           &
 ! Units
     "K"                                                                        &
   ) /
@@ -9377,6 +9377,149 @@ DATA metadata(724) / var_metadata(                                             &
     var_type_surft,                                                            &
 ! Long name
     "Integrated momentum stability function for land surface tiles",          &
+! Units
+    "1"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for tair_f
+!-----------------------------------------------------------------------------
+DATA metadata(725) / var_metadata(                                             &
+! String identifier
+    'tair_f',                                                                  &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "Tile air temperature forcing at z1_tq",                                  &
+! Units
+    "K"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for tair_f_gb
+!-----------------------------------------------------------------------------
+DATA metadata(726) / var_metadata(                                             &
+! String identifier
+    'tair_f_gb',                                                               &
+! Variable type
+    var_type_surface,                                                          &
+! Long name
+    "Gridbox air temperature forcing at z1_tq",                               &
+! Units
+    "K"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for lwdown_f
+!-----------------------------------------------------------------------------
+DATA metadata(727) / var_metadata(                                             &
+! String identifier
+    'lwdown_f',                                                                &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "Tile copy of surface incident longwave radiation forcing",               &
+! Units
+    "W m-2"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for swdown_f
+!-----------------------------------------------------------------------------
+DATA metadata(728) / var_metadata(                                             &
+! String identifier
+    'swdown_f',                                                                &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "Tile copy of surface incident shortwave radiation forcing",              &
+! Units
+    "W m-2"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for reference_height_f
+!-----------------------------------------------------------------------------
+DATA metadata(729) / var_metadata(                                             &
+! String identifier
+    'reference_height_f',                                                      &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "Tile copy of wind reference height z1_uv",                               &
+! Units
+    "m"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for reference_height_f_gb
+!-----------------------------------------------------------------------------
+DATA metadata(730) / var_metadata(                                             &
+! String identifier
+    'reference_height_f_gb',                                                   &
+! Variable type
+    var_type_surface,                                                          &
+! Long name
+    "Gridbox wind reference height z1_uv",                                    &
+! Units
+    "m"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for tsurf_f_gb
+!-----------------------------------------------------------------------------
+DATA metadata(731) / var_metadata(                                             &
+! String identifier
+    'tsurf_f_gb',                                                              &
+! Variable type
+    var_type_surface,                                                          &
+! Long name
+    "Gridbox surface skin temperature over land tiles",                       &
+! Units
+    "K"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for wind_f
+!-----------------------------------------------------------------------------
+DATA metadata(732) / var_metadata(                                             &
+! String identifier
+    'wind_f',                                                                  &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "Tile copy of scalar wind speed at z1_uv",                                &
+! Units
+    "m s-1"                                                                    &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for phi_h
+!-----------------------------------------------------------------------------
+DATA metadata(733) / var_metadata(                                             &
+! String identifier
+    'phi_h',                                                                   &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "Integrated scalar stability function for land surface tiles",           &
+! Units
+    "1"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for phi_m_gb
+!-----------------------------------------------------------------------------
+DATA metadata(734) / var_metadata(                                             &
+! String identifier
+    'phi_m_gb',                                                                &
+! Variable type
+    var_type_surface,                                                          &
+! Long name
+    "Gridbox-averaged integrated momentum stability function",               &
+! Units
+    "1"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for phi_h_gb
+!-----------------------------------------------------------------------------
+DATA metadata(735) / var_metadata(                                             &
+! String identifier
+    'phi_h_gb',                                                                &
+! Variable type
+    var_type_surface,                                                          &
+! Long name
+    "Gridbox-averaged integrated scalar stability function",                  &
 ! Units
     "1"                                                                        &
   ) /

@@ -908,8 +908,11 @@ DO j = 1,nvars
   CASE ( 'tau' )
     sf_diag % l_tau_surft = .TRUE.
 
-  CASE ( 'phi_m' )
+  CASE ( 'phi_m', 'phi_m_gb' )
     sf_diag % l_phi_m_surft = .TRUE.
+
+  CASE ( 'phi_h', 'phi_h_gb' )
+    sf_diag % l_phi_h_surft = .TRUE.
 
   CASE ( 'et_stom' )
     sf_diag % l_et_stom_surft = .TRUE.

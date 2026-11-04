@@ -322,6 +322,23 @@ ELSE
 END IF
 
 !-----------------------------------------------------------------------------
+! Tiled scalar stability function.
+!-----------------------------------------------------------------------------
+IF ( sf_diag % l_phi_h_surft ) THEN
+  ALLOCATE( sf_diag%phi_h_surft(land_pts,nsurft), STAT = ERROR )
+  error_sum = error_sum + ERROR
+ELSE
+  ALLOCATE( sf_diag%phi_h_surft(1,1), STAT = ERROR )
+  error_sum = error_sum + ERROR
+END IF
+IF ( error_sum == 0 ) THEN
+  sf_diag%phi_h_surft(:,:) = 0.0
+ELSE
+  CALL ereport( "Error when allocating sf_diag % phi_h_surft.",               &
+                errcode, " Check " // TRIM(RoutineName) )
+END IF
+
+!-----------------------------------------------------------------------------
 ! Latent heat flux.
 !-----------------------------------------------------------------------------
 IF ( sf_diag % slh ) THEN
