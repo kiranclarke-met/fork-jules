@@ -361,6 +361,7 @@ INTEGER :: i,j,k,l ! Loop counter; horizontal field index.
 INTEGER :: it    ! Iteration loop counter.
 INTEGER :: n_its ! Number of iterations for Monin-Obukhov length
 !                   ! and stability functions.
+LOGICAL :: l_phi_ml_active
 
 INTEGER :: indexi(surft_pts), indexj(surft_pts)
               ! Arrays to store horizontal field indices i and j
@@ -418,6 +419,7 @@ phi_m_ml = 0.0
 phi_h_ml = 0.0
 phi_m_corr_ml = 0.0
 phi_h_corr_ml = 0.0
+l_phi_ml_active = .FALSE.
 
 DO k = 1,surft_pts
   l = surft_index(k)
@@ -443,6 +445,9 @@ IF (n > 0 .AND. PRESENT(tl_1_ml) .AND. PRESENT(lw_down_ml) .AND.              &
     tstar,wind_ml_points,z0m,                                                &
     phi_m_ml,phi_h_ml,phi_m_corr_ml,phi_h_corr_ml                             &
   )
+  phi_m_ml = MAX(0.01, phi_m_ml)
+  phi_h_ml = MAX(0.01, phi_h_ml)
+  l_phi_ml_active = .TRUE.
 END IF
 
 n_its         = 8     ! Found typically 0.2% from converged value
@@ -521,6 +526,8 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                      phi_m,phi_h)
     END SELECT
   END IF
+
+  IF (l_phi_ml_active) phi_m = phi_m_ml
 
   IF (l_vegdrag) THEN
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l,j,i)              &
@@ -835,6 +842,8 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                        phi_m, phi_h)
       END SELECT
 
+      IF (l_phi_ml_active) phi_m = phi_m_ml
+
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
 !$OMP  SHARED(surft_pts,surft_index,chv,cdv,cdv_std,phi_h,                     &
 !$OMP  phi_m,v_s_std,v_s,wind_profile_factor) IF(surft_pts>1)
@@ -858,6 +867,7 @@ IF (cor_mo_iter == Improve_Initial_Guess) THEN
                        phi_m,phi_h)
       END SELECT
 
+      IF (l_phi_ml_active) phi_m = phi_m_ml
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
 !$OMP  SHARED(surft_pts,surft_index,chv,cdv,cdv_std,phi_h,                     &
@@ -944,6 +954,8 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
                      phi_m,phi_h)
     END SELECT
   END IF
+
+  IF (l_phi_ml_active) phi_m = phi_m_ml
 
   IF (l_vegdrag) THEN
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l,j,i)              &
@@ -1265,6 +1277,8 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
                        phi_m, phi_h)
       END SELECT
 
+      IF (l_phi_ml_active) phi_m = phi_m_ml
+
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
 !$OMP  SHARED(surft_pts,surft_index,chv,cdv,cdv_std,phi_h,                     &
 !$OMP  phi_m,v_s_std,v_s,wind_profile_factor) IF(surft_pts>1)
@@ -1288,6 +1302,7 @@ ELSE     ! cor_mo_iter earlier option than Improve_Initial_Guess
                        phi_m,phi_h)
       END SELECT
 
+      IF (l_phi_ml_active) phi_m = phi_m_ml
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC) PRIVATE(k,l)                  &
 !$OMP  SHARED(surft_pts,surft_index,chv,cdv,cdv_std,phi_h,                     &
