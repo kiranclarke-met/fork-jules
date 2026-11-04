@@ -339,6 +339,65 @@ ELSE
 END IF
 
 !-----------------------------------------------------------------------------
+! Tiled ML stability functions and corrections.
+!-----------------------------------------------------------------------------
+IF ( sf_diag % l_phi_m_ml_surft ) THEN
+  ALLOCATE( sf_diag%phi_m_ml_surft(land_pts,nsurft), STAT = ERROR )
+  error_sum = error_sum + ERROR
+ELSE
+  ALLOCATE( sf_diag%phi_m_ml_surft(1,1), STAT = ERROR )
+  error_sum = error_sum + ERROR
+END IF
+IF ( error_sum == 0 ) THEN
+  sf_diag%phi_m_ml_surft(:,:) = 0.0
+ELSE
+  CALL ereport( "Error when allocating sf_diag % phi_m_ml_surft.",            &
+                errcode, " Check " // TRIM(RoutineName) )
+END IF
+
+IF ( sf_diag % l_phi_h_ml_surft ) THEN
+  ALLOCATE( sf_diag%phi_h_ml_surft(land_pts,nsurft), STAT = ERROR )
+  error_sum = error_sum + ERROR
+ELSE
+  ALLOCATE( sf_diag%phi_h_ml_surft(1,1), STAT = ERROR )
+  error_sum = error_sum + ERROR
+END IF
+IF ( error_sum == 0 ) THEN
+  sf_diag%phi_h_ml_surft(:,:) = 0.0
+ELSE
+  CALL ereport( "Error when allocating sf_diag % phi_h_ml_surft.",            &
+                errcode, " Check " // TRIM(RoutineName) )
+END IF
+
+IF ( sf_diag % l_phi_m_corr_ml_surft ) THEN
+  ALLOCATE( sf_diag%phi_m_corr_ml_surft(land_pts,nsurft), STAT = ERROR )
+  error_sum = error_sum + ERROR
+ELSE
+  ALLOCATE( sf_diag%phi_m_corr_ml_surft(1,1), STAT = ERROR )
+  error_sum = error_sum + ERROR
+END IF
+IF ( error_sum == 0 ) THEN
+  sf_diag%phi_m_corr_ml_surft(:,:) = 0.0
+ELSE
+  CALL ereport( "Error when allocating sf_diag % phi_m_corr_ml_surft.",       &
+                errcode, " Check " // TRIM(RoutineName) )
+END IF
+
+IF ( sf_diag % l_phi_h_corr_ml_surft ) THEN
+  ALLOCATE( sf_diag%phi_h_corr_ml_surft(land_pts,nsurft), STAT = ERROR )
+  error_sum = error_sum + ERROR
+ELSE
+  ALLOCATE( sf_diag%phi_h_corr_ml_surft(1,1), STAT = ERROR )
+  error_sum = error_sum + ERROR
+END IF
+IF ( error_sum == 0 ) THEN
+  sf_diag%phi_h_corr_ml_surft(:,:) = 0.0
+ELSE
+  CALL ereport( "Error when allocating sf_diag % phi_h_corr_ml_surft.",       &
+                errcode, " Check " // TRIM(RoutineName) )
+END IF
+
+!-----------------------------------------------------------------------------
 ! Latent heat flux.
 !-----------------------------------------------------------------------------
 IF ( sf_diag % slh ) THEN

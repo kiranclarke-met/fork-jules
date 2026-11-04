@@ -953,6 +953,8 @@ REAL(KIND=real_jlslsm) ::                                                      &
                              ! Monin-Obukhov stability function for scalars
                              ! integrated to the model's lowest temperature
                              ! and humidity level.
+,phi_m_ml(land_pts),phi_h_ml(land_pts),                                       &
+ phi_m_corr_ml(land_pts),phi_h_corr_ml(land_pts)                              &
 ,rhostar_mom(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)              &
                              ! Surface air density for momentum
 ,ashtf_surft(land_pts,nsurft)                                                  &
@@ -2320,7 +2322,9 @@ DO n = 1,nsurft
     cd_surft(:,n),ch_surft(:,n),cd_std(:,n),                                   &
     v_s_surft(:,n),v_s_std(:,n),recip_l_mo_surft(:,n),                         &
     u_s_iter_surft(:,n),phi_m_out=phi_m,phi_h_out=phi_h,                       &
-    tl_1_ml=tl_1,lw_down_ml=lw_down,sw_down_ml=sw_down_ml,wind_ml=wind_ml      &
+    tl_1_ml=tl_1,lw_down_ml=lw_down,sw_down_ml=sw_down_ml,wind_ml=wind_ml,     &
+    phi_m_ml_out=phi_m_ml,phi_h_ml_out=phi_h_ml,                               &
+    phi_m_corr_ml_out=phi_m_corr_ml,phi_h_corr_ml_out=phi_h_corr_ml           &
     )
   IF (sf_diag%l_phi_m_surft) THEN
     DO k = 1,surft_pts(n)
@@ -2332,6 +2336,24 @@ DO n = 1,nsurft
     DO k = 1,surft_pts(n)
       l = surft_index(k,n)
       sf_diag%phi_h_surft(l,n) = phi_h(l)
+    END DO
+  END IF
+  IF (sf_diag%l_phi_m_ml_surft .OR. sf_diag%l_phi_h_ml_surft .OR.            &
+      sf_diag%l_phi_m_corr_ml_surft .OR. sf_diag%l_phi_h_corr_ml_surft) THEN
+    DO k = 1,surft_pts(n)
+      l = surft_index(k,n)
+      IF (sf_diag%l_phi_m_ml_surft) THEN
+        sf_diag%phi_m_ml_surft(l,n) = phi_m_ml(l)
+      END IF
+      IF (sf_diag%l_phi_h_ml_surft) THEN
+        sf_diag%phi_h_ml_surft(l,n) = phi_h_ml(l)
+      END IF
+      IF (sf_diag%l_phi_m_corr_ml_surft) THEN
+        sf_diag%phi_m_corr_ml_surft(l,n) = phi_m_corr_ml(l)
+      END IF
+      IF (sf_diag%l_phi_h_corr_ml_surft) THEN
+        sf_diag%phi_h_corr_ml_surft(l,n) = phi_h_corr_ml(l)
+      END IF
     END DO
   END IF
 END DO

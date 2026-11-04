@@ -9523,4 +9523,56 @@ DATA metadata(735) / var_metadata(                                             &
 ! Units
     "1"                                                                        &
   ) /
+!-----------------------------------------------------------------------------
+! Metadata for phi_m_ml
+!-----------------------------------------------------------------------------
+DATA metadata(736) / var_metadata(                                             &
+! String identifier
+    'phi_m_ml',                                                                &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML momentum stability function for land surface tiles",                 &
+! Units
+    "1"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for phi_h_ml
+!-----------------------------------------------------------------------------
+DATA metadata(737) / var_metadata(                                             &
+! String identifier
+    'phi_h_ml',                                                                &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML scalar stability function for land surface tiles",                    &
+! Units
+    "1"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for phi_m_corr_ml
+!-----------------------------------------------------------------------------
+DATA metadata(738) / var_metadata(                                             &
+! String identifier
+    'phi_m_corr_ml',                                                           &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML momentum stability correction for land surface tiles",                &
+! Units
+    "1"                                                                        &
+  ) /
+!-----------------------------------------------------------------------------
+! Metadata for phi_h_corr_ml
+!-----------------------------------------------------------------------------
+DATA metadata(739) / var_metadata(                                             &
+! String identifier
+    'phi_h_corr_ml',                                                           &
+! Variable type
+    var_type_surft,                                                            &
+! Long name
+    "ML scalar stability correction for land surface tiles",                 &
+! Units
+    "1"                                                                        &
+  ) /
 #endif

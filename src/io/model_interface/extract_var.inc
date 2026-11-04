@@ -2332,6 +2332,22 @@ CASE ( 'phi_h' )
   cube_land = cube_from_array(sf_diag%phi_h_surft)
   cube = map_from_land(cube_land)
 
+CASE ( 'phi_m_ml' )
+  cube_land = cube_from_array(sf_diag%phi_m_ml_surft)
+  cube = map_from_land(cube_land)
+
+CASE ( 'phi_h_ml' )
+  cube_land = cube_from_array(sf_diag%phi_h_ml_surft)
+  cube = map_from_land(cube_land)
+
+CASE ( 'phi_m_corr_ml' )
+  cube_land = cube_from_array(sf_diag%phi_m_corr_ml_surft)
+  cube = map_from_land(cube_land)
+
+CASE ( 'phi_h_corr_ml' )
+  cube_land = cube_from_array(sf_diag%phi_h_corr_ml_surft)
+  cube = map_from_land(cube_land)
+
 CASE ( 'phi_h_gb' )
   cube_land = cube_from_array(                                               &
     surftiles_to_gbm(sf_diag%phi_h_surft, ainfo))
