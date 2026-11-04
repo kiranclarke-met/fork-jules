@@ -7,6 +7,7 @@ MODULE fcdch_mod
 
 USE phi_m_h_vol_mod, ONLY: phi_m_h_vol
 USE phi_m_h_mod, ONLY: phi_m_h
+USE phi_m_h_ml_mod, ONLY: phi_m_h_ml
 USE sea_rough_int_mod, ONLY: sea_rough_int
 
 USE um_types, ONLY: real_jlslsm
@@ -39,10 +40,10 @@ SUBROUTINE fcdch (                                                             &
  anthrop_heat,scaling_urban,alpha1,hcons,ashtf,                                &
  rhostar,bq_1,bt_1,                                                            &
  cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,                              &
- phi_m_out,phi_h_out                                                          &
+ phi_m_out,phi_h_out,tl_1_ml,lw_down_ml,sw_down_ml,wind_ml                    &
 )
 
-USE atm_fields_bounds_mod, ONLY: tdims
+USE atm_fields_bounds_mod, ONLY: pdims_s, tdims
 USE planet_constants_mod,  ONLY: g, cp, vkman
 USE sf_flux_mod,           ONLY: sf_flux
 USE sf_resist_mod,         ONLY: sf_resist
@@ -242,6 +243,12 @@ REAL(KIND=real_jlslsm) ::                                                      &
 
 REAL(KIND=real_jlslsm), OPTIONAL, INTENT(OUT) :: phi_m_out(points), phi_h_out(points)
 
+REAL(KIND=real_jlslsm), OPTIONAL, INTENT(IN) ::                                &
+  tl_1_ml(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end),               &
+  lw_down_ml(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end),             &
+  sw_down_ml(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end),             &
+  wind_ml(pdims_s%i_start:pdims_s%i_end,pdims_s%j_start:pdims_s%j_end)
+
 !    Workspace usage----------------------------------------------------
 
 !     Local work arrays.
@@ -260,6 +267,11 @@ REAL(KIND=real_jlslsm) ::                                                      &
 !                    ! Monin-Obukhov stability function for scalars
 !                    ! integrated to the model's lowest temperature
 !                    ! and humidity level.
+,phi_m_ml(points), phi_h_ml(points),                                           &
+ phi_m_corr_ml(points), phi_h_corr_ml(points),                                 &
+ tl_1_ml_points(points), lw_down_ml_points(points),                            &
+ sw_down_ml_points(points), z1_uv_ml_points(points),                           &
+ wind_ml_points(points)                                                        &
 ,chv_dim(points)                                                               &
                      ! Dimensionless transport coefficient
 ,chv_old(points)                                                               &
@@ -397,11 +409,36 @@ DO l = 1, points
 END DO
 !$OMP END PARALLEL DO
 
+phi_m_ml = 0.0
+phi_h_ml = 0.0
+phi_m_corr_ml = 0.0
+phi_h_corr_ml = 0.0
+
 DO k = 1,surft_pts
   l = surft_index(k)
   indexj(k) = (pts_index(l) - 1) / t_i_length + 1
   indexi(k) = pts_index(l) - (indexj(k) - 1) * t_i_length
 END DO
+
+IF (n > 0 .AND. PRESENT(tl_1_ml) .AND. PRESENT(lw_down_ml) .AND.              &
+    PRESENT(sw_down_ml) .AND. PRESENT(wind_ml)) THEN
+  DO k = 1,surft_pts
+    l = surft_index(k)
+    i = indexi(k)
+    j = indexj(k)
+    tl_1_ml_points(l) = tl_1_ml(i,j)
+    lw_down_ml_points(l) = lw_down_ml(i,j)
+    sw_down_ml_points(l) = sw_down_ml(i,j)
+    z1_uv_ml_points(l) = z1_uv(i,j)
+    wind_ml_points(l) = wind_ml(i,j)
+  END DO
+  CALL phi_m_h_ml (                                                           &
+    points,surft_pts,surft_index,                                             &
+    tl_1_ml_points,lw_down_ml_points,sw_down_ml_points,z1_uv_ml_points,       &
+    tstar,wind_ml_points,z0m,                                                &
+    phi_m_ml,phi_h_ml,phi_m_corr_ml,phi_h_corr_ml                             &
+  )
+END IF
 
 n_its         = 8     ! Found typically 0.2% from converged value
 tolerance     = 0.25  ! Set tolerance value for convergence of db to 25%

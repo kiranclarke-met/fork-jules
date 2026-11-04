@@ -662,7 +662,9 @@ CASE ( jules )
     wtrac_jls%sthu_soilt, wtrac_jls%qw_1_ij,                                   &
     !Water tracers (OUT)
     wtrac_jls%fqw_1, wtrac_jls%fqw_surft, wtrac_jls%fqw_evapsrce,              &
-    wtrac_jls%smc_soilt                                                        &
+    wtrac_jls%smc_soilt,                                                       &
+    sw_down_ml=forcing%sw_down_ij,                                             &
+    wind_ml=SQRT(jules_vars%u_1_p_ij**2 + jules_vars%v_1_p_ij**2)              &
     )
 
   CALL jules_ssi_sf_explicit (                                                 &

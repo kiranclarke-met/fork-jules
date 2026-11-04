@@ -122,7 +122,8 @@ SUBROUTINE jules_land_sf_explicit (                                            &
  !Water tracers (IN)
  snow_surft_wtrac, canopy_wtrac, sthu_soilt_wtrac, qw_1_wtrac,                 &
  ! Water tracers (OUT)
- fqw_1_wtrac, fqw_surft_wtrac, fqw_evapsrce_wtrac, smc_soilt_wtrac             &
+ fqw_1_wtrac, fqw_surft_wtrac, fqw_evapsrce_wtrac, smc_soilt_wtrac,           &
+ sw_down_ml, wind_ml                                                           &
  )
 
 USE ancil_info,              ONLY: dim_cslayer, nsoilt, rad_nband
@@ -265,6 +266,10 @@ REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
 REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
   charnock_w(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end)
 ! Charnock's coefficient from wave model
+
+REAL(KIND=real_jlslsm), OPTIONAL, INTENT(IN) ::                                &
+                    sw_down_ml(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end),             &
+                    wind_ml(pdims_s%i_start:pdims_s%i_end,pdims_s%j_start:pdims_s%j_end)
 
 REAL(KIND=real_jlslsm), INTENT(IN) ::                                          &
                     z1_uv_top(tdims%i_start:tdims%i_end,                       &
@@ -2314,7 +2319,8 @@ DO n = 1,nsurft
     rhostar,bq_1,bt_1,                                                         &
     cd_surft(:,n),ch_surft(:,n),cd_std(:,n),                                   &
     v_s_surft(:,n),v_s_std(:,n),recip_l_mo_surft(:,n),                         &
-    u_s_iter_surft(:,n),phi_m_out=phi_m,phi_h_out=phi_h                        &
+    u_s_iter_surft(:,n),phi_m_out=phi_m,phi_h_out=phi_h,                       &
+    tl_1_ml=tl_1,lw_down_ml=lw_down,sw_down_ml=sw_down_ml,wind_ml=wind_ml      &
     )
   IF (sf_diag%l_phi_m_surft) THEN
     DO k = 1,surft_pts(n)
