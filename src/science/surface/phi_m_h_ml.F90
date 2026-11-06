@@ -77,7 +77,7 @@ DO k = 1,surft_pts
   CALL phi_mh_model_runner(input, output)
 
   phi_mn = LOG((z1_uv(l) + z0m(l)) / z0m(l))
-  phi_m_corr(l) = output(1)
+  phi_m_corr(l) = MAX(0.01, output(1))
   
   phi_m(l) = phi_m_corr(l) + phi_mn
 END DO
