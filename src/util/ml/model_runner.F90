@@ -6,27 +6,27 @@ CONTAINS
         USE um_types, ONLY: real_jlslsm
         IMPLICIT NONE
         
-        REAL(KIND=real_jlslsm), INTENT(IN) :: input(6)
+        REAL(KIND=real_jlslsm), INTENT(IN) :: input(5)
         REAL(KIND=real_jlslsm), INTENT(OUT) :: output(1)
 
-        REAL(KIND=4) :: input4(1,6)
+        REAL(KIND=4) :: input4(1,5)
         REAL(KIND=4) :: output4(1,1)
         REAL(KIND=4) :: output_c4(1)
 
-        ! AU trained version (2026-11-04_10:12:16_49310581)
-        ! ['Tair', 'LWdown', 'SWdown', 'height', 't_surf', 'Wind']
-        REAL(KIND=4), PARAMETER :: means_x(6) = (/ &
-            296.7774522931202, 369.1881082483503, 376.2386889028187, &
-            19.49643008174675, 299.8030091373082, 2.5449246299614416 /)
-        REAL(KIND=4), PARAMETER :: scales_x(6) = (/ &
-            7.504076025198663, 51.97930654914925, 336.3099266207799, &
-            15.860279753622542, 9.708808361873714, 1.429862896548756 /)
+        ! AU trained version (2026-11-17_15:03:06_52640512)
+        ! ['Tair', 'LWdown', 'SWdown', 'height', 'Wind']
+        REAL(KIND=4), PARAMETER :: means_x(5) = (/ &
+            296.61280925538387, 372.0445920340212, 364.718705420158, &
+            20.46828220776778, 2.510342541776418 /)
+        REAL(KIND=4), PARAMETER :: scales_x(5) = (/ &
+            7.58953255309915, 52.22432834724349, 334.5519097163154, &
+            16.451015880708134, 1.4397414843238443 /)
         
         ! ['stability_momentum']
         REAL(KIND=4), PARAMETER :: means_y(1) = (/ &
-            0.4537166975220352 /)
+            0.5471671778149918 /)
         REAL(KIND=4), PARAMETER :: scales_y(1) = (/ &
-            3.1674286203689337 /)
+            3.0713401488598673 /)
         
         ! cast to kind=4
         input4(1,:) = REAL(input(:), KIND=4)
@@ -46,7 +46,7 @@ CONTAINS
         IMPLICIT NONE
 
         INTEGER :: unit = 1234
-        REAL(KIND=real_jlslsm) :: input(6)
+        REAL(KIND=real_jlslsm) :: input(5)
         REAL(KIND=real_jlslsm) :: output(1)
 
         ! read in input data from file to input array 

@@ -43,7 +43,7 @@ REAL(KIND=real_jlslsm), INTENT(OUT) :: phi_m_corr(points)
 REAL(KIND=real_jlslsm), INTENT(OUT) :: phi_h_corr(points)
 
 INTEGER :: k, l
-REAL(KIND=real_jlslsm) :: input(6)
+REAL(KIND=real_jlslsm) :: input(5)
 REAL(KIND=real_jlslsm) :: output(1)
 REAL(KIND=real_jlslsm) :: phi_mn
 
@@ -71,8 +71,7 @@ DO k = 1,surft_pts
   input(2) = lw_down(l)
   input(3) = sw_down(l)
   input(4) = z1_uv(l)
-  input(5) = tstar(l)
-  input(6) = wind(l)
+  input(5) = wind(l)
 
   CALL phi_mh_model_runner(input, output)
 
