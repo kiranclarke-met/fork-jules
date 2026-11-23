@@ -13,7 +13,7 @@ CONTAINS
         REAL(KIND=4) :: output4(1,1)
         REAL(KIND=4) :: output_c4(1)
 
-        ! AU trained version (2026-11-17_15:03:06_52640512)
+        ! AU trained version (2026-11-23_12:04:26_53593736)
         ! ['Tair', 'LWdown', 'SWdown', 'height', 'Wind']
         REAL(KIND=4), PARAMETER :: means_x(5) = (/ &
             296.61280925538387, 372.0445920340212, 364.718705420158, &
@@ -24,9 +24,9 @@ CONTAINS
         
         ! ['stability_momentum']
         REAL(KIND=4), PARAMETER :: means_y(1) = (/ &
-            0.5471671778149918 /)
+            0.9819974658690936 /)
         REAL(KIND=4), PARAMETER :: scales_y(1) = (/ &
-            3.0713401488598673 /)
+            3.045395886214141 /)
         
         ! cast to kind=4
         input4(1,:) = REAL(input(:), KIND=4)
