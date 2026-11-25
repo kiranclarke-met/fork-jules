@@ -129,6 +129,7 @@ SUBROUTINE jules_land_sf_explicit (                                            &
 USE ancil_info,              ONLY: dim_cslayer, nsoilt, rad_nband
 USE atm_fields_bounds_mod,      ONLY: pdims_s, pdims, tdims
 USE bl_option_mod,              ONLY: l_quick_ap2
+USE blend_h,                    ONLY: lb
 USE c_elevate,                  ONLY: l_elev_absolute_height
 USE c_z0h_z0m,                  ONLY: z0h_z0m, z0h_z0m_classic
 USE calc_air_dens_mod,          ONLY: calc_air_dens
@@ -879,6 +880,8 @@ REAL(KIND=real_jlslsm) ::                                                      &
                              ! excluding form drag.
 ,z0m_eff_surft(land_pts,nsurft)                                                &
                              ! Effective momentum roughness length
+,z0m_gb_land(land_pts)                                                        &
+                             ! Land-tile gridbox momentum roughness length
 ,db_surft(land_pts,nsurft)                                                     &
                              ! Buoyancy difference for surface
                              ! tile
@@ -1031,6 +1034,10 @@ REAL(KIND=real_jlslsm) ::                                                      &
              ! Work space
 ,z0                                                                            &
              ! yet more workspace
+,fz0_land                                                                     &
+             ! Aggregation function for gridbox roughness
+,z0m_log                                                                      &
+             ! Logarithm of blend height over tile roughness
 
              ! Temporary variables for adjustment of downwelling
              ! logwave to elevation tiles and correction back to
@@ -2290,6 +2297,28 @@ IF (formdrag == effective_z0) THEN
   END DO
 END IF
 
+! Calculate the land-tile gridbox roughness using the same blend-height
+! aggregation as the gridbox diagnostics.
+!$OMP PARALLEL DO IF(land_pts > 1) DEFAULT(NONE) SCHEDULE(STATIC)              &
+!$OMP PRIVATE(l,n,fz0_land,z0m_log)                                            &
+!$OMP SHARED(land_pts,nsurft,tile_frac,z0m_surft,z0m_eff_surft,                &
+!$OMP        l_vegdrag_surft,z0m_gb_land)
+DO l = 1,land_pts
+  fz0_land = 0.0
+  DO n = 1,nsurft
+    IF (tile_frac(l,n) > 0.0) THEN
+      IF (l_vegdrag_surft(n)) THEN
+        z0m_log = LOG(lb / z0m_surft(l,n))
+      ELSE
+        z0m_log = LOG(lb / z0m_eff_surft(l,n))
+      END IF
+      fz0_land = fz0_land + tile_frac(l,n) / z0m_log**2
+    END IF
+  END DO
+  z0m_gb_land(l) = lb * EXP(-SQRT(1.0 / fz0_land))
+END DO
+!$OMP END PARALLEL DO
+
 !-----------------------------------------------------------------------
 !  3.4 Calculate CD, CH via routine FCDCH.
 !-----------------------------------------------------------------------
@@ -2324,7 +2353,8 @@ DO n = 1,nsurft
     u_s_iter_surft(:,n),phi_m_out=phi_m,phi_h_out=phi_h,                       &
     tl_1_ml=tl_1,lw_down_ml=lw_down,sw_down_ml=sw_down_ml,wind_ml=wind_ml,     &
     phi_m_ml_out=phi_m_ml,phi_h_ml_out=phi_h_ml,                               &
-    phi_m_corr_ml_out=phi_m_corr_ml,phi_h_corr_ml_out=phi_h_corr_ml           &
+    phi_m_corr_ml_out=phi_m_corr_ml,phi_h_corr_ml_out=phi_h_corr_ml,           &
+    z0m_gb_ml=z0m_gb_land                                                     &
     )
   IF (sf_diag%l_phi_m_surft) THEN
     DO k = 1,surft_pts(n)

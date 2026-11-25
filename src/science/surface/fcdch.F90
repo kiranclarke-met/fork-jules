@@ -41,7 +41,7 @@ SUBROUTINE fcdch (                                                             &
  rhostar,bq_1,bt_1,                                                            &
  cdv,chv,cdv_std,v_s,v_s_std,recip_l_mo,u_s_std,                              &
  phi_m_out,phi_h_out,tl_1_ml,lw_down_ml,sw_down_ml,wind_ml,                   &
- phi_m_ml_out,phi_h_ml_out,phi_m_corr_ml_out,phi_h_corr_ml_out                &
+ phi_m_ml_out,phi_h_ml_out,phi_m_corr_ml_out,phi_h_corr_ml_out,z0m_gb_ml     &
 )
 
 USE atm_fields_bounds_mod, ONLY: pdims_s, tdims
@@ -254,6 +254,8 @@ REAL(KIND=real_jlslsm), OPTIONAL, INTENT(IN) ::                                &
   sw_down_ml(tdims%i_start:tdims%i_end,tdims%j_start:tdims%j_end),             &
   wind_ml(pdims_s%i_start:pdims_s%i_end,pdims_s%j_start:pdims_s%j_end)
 
+REAL(KIND=real_jlslsm), OPTIONAL, INTENT(IN) :: z0m_gb_ml(points)
+
 !    Workspace usage----------------------------------------------------
 
 !     Local work arrays.
@@ -429,25 +431,30 @@ END DO
 
 IF (n > 0 .AND. PRESENT(tl_1_ml) .AND. PRESENT(lw_down_ml) .AND.              &
     PRESENT(sw_down_ml) .AND. PRESENT(wind_ml)) THEN
-  DO k = 1,surft_pts
-    l = surft_index(k)
-    i = indexi(k)
-    j = indexj(k)
-    tl_1_ml_points(l) = tl_1_ml(i,j)
-    lw_down_ml_points(l) = lw_down_ml(i,j)
-    sw_down_ml_points(l) = sw_down_ml(i,j)
-    z1_uv_ml_points(l) = z1_uv(i,j)
-    wind_ml_points(l) = wind_ml(i,j)
-  END DO
-  CALL phi_m_h_ml (                                                           &
-    points,surft_pts,surft_index,                                             &
-    tl_1_ml_points,lw_down_ml_points,sw_down_ml_points,z1_uv_ml_points,       &
-    tstar,wind_ml_points,z0m,                                                &
-    phi_m_ml,phi_h_ml,phi_m_corr_ml,phi_h_corr_ml                             &
-  )
-  phi_m_ml = MAX(0.01, phi_m_ml)
-  phi_h_ml = MAX(0.01, phi_h_ml)
-  l_phi_ml_active = .TRUE.
+  IF (.NOT. PRESENT(z0m_gb_ml)) THEN
+    WRITE(*,*) 'Gridbox roughness length is required for ML stability'
+    STOP
+  ELSE
+    DO k = 1,surft_pts
+      l = surft_index(k)
+      i = indexi(k)
+      j = indexj(k)
+      tl_1_ml_points(l) = tl_1_ml(i,j)
+      lw_down_ml_points(l) = lw_down_ml(i,j)
+      sw_down_ml_points(l) = sw_down_ml(i,j)
+      z1_uv_ml_points(l) = z1_uv(i,j)
+      wind_ml_points(l) = wind_ml(i,j)
+    END DO
+    CALL phi_m_h_ml (                                                         &
+      points,surft_pts,surft_index,                                           &
+      tl_1_ml_points,lw_down_ml_points,sw_down_ml_points,z1_uv_ml_points,     &
+      tstar,wind_ml_points,z0m_gb_ml,                                         &
+      phi_m_ml,phi_h_ml,phi_m_corr_ml,phi_h_corr_ml                           &
+    )
+    phi_m_ml = MAX(0.01, phi_m_ml)
+    phi_h_ml = MAX(0.01, phi_h_ml)
+    l_phi_ml_active = .TRUE.
+  END IF
 END IF
 
 n_its         = 8     ! Found typically 0.2% from converged value

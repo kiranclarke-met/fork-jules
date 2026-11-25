@@ -15,7 +15,7 @@ CONTAINS
 
 SUBROUTINE phi_m_h_ml (                                                       &
  points,surft_pts,surft_index,                                               &
- tl_1,lw_down,sw_down,z1_uv,tstar,wind,z0m,                                  &
+ tl_1,lw_down,sw_down,z1_uv,tstar,wind,z0m_gb,                               &
  phi_m,phi_h,phi_m_corr,phi_h_corr                                          &
 )
 
@@ -35,7 +35,7 @@ REAL(KIND=real_jlslsm), INTENT(IN) :: sw_down(points)
 REAL(KIND=real_jlslsm), INTENT(IN) :: z1_uv(points)
 REAL(KIND=real_jlslsm), INTENT(IN) :: tstar(points)
 REAL(KIND=real_jlslsm), INTENT(IN) :: wind(points)
-REAL(KIND=real_jlslsm), INTENT(IN) :: z0m(points)
+REAL(KIND=real_jlslsm), INTENT(IN) :: z0m_gb(points)
 
 REAL(KIND=real_jlslsm), INTENT(OUT) :: phi_m(points)
 REAL(KIND=real_jlslsm), INTENT(OUT) :: phi_h(points)
@@ -62,7 +62,8 @@ phi_h_corr = 0.0
 
 !$OMP PARALLEL DO DEFAULT(NONE) SCHEDULE(STATIC)                               &
 !$OMP PRIVATE(k,l,input,output,phi_mn)                                  &
-!$OMP SHARED(surft_pts,surft_index,tl_1,lw_down,sw_down,z1_uv,tstar,wind,z0m,  &
+!$OMP SHARED(surft_pts,surft_index,tl_1,lw_down,sw_down,z1_uv,tstar,wind,      &
+!$OMP        z0m_gb,                                                           &
 !$OMP        phi_m,phi_m_corr) IF(surft_pts > 1)
 DO k = 1,surft_pts
   l = surft_index(k)
@@ -74,8 +75,7 @@ DO k = 1,surft_pts
   input(5) = wind(l)
 
   CALL phi_mh_model_runner(input, output)
-
-  phi_mn = LOG((z1_uv(l) + z0m(l)) / z0m(l))
+  phi_mn = LOG((z1_uv(l) + z0m_gb(l)) / z0m_gb(l))
   phi_m_corr(l) = output(1)
   
   phi_m(l) = phi_mn - phi_m_corr(l)
