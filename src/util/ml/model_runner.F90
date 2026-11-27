@@ -13,7 +13,7 @@ CONTAINS
         REAL(KIND=4) :: output4(1,1)
         REAL(KIND=4) :: output_c4(1)
 
-        ! AU trained version (2026-11-23_12:04:26_53593736)
+        ! AU trained version (2026-11-25_11:46:46_54008681)
         ! ['Tair', 'LWdown', 'SWdown', 'height', 'Wind']
         REAL(KIND=4), PARAMETER :: means_x(5) = (/ &
             296.6138234958321, 372.05691444219667, 364.82169288258785, &
